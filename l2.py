@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # Linksaver
 # by Shadowdara
@@ -26,7 +26,7 @@ from tkinter import ttk
 
 
 # Version for linksaver
-VERSION: str = "3.0.0"
+___version___: str = "3.0.0"
 
 
 # ansi colors
