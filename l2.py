@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Optional, List
 import tkinter as tk
 from tkinter import messagebox
+from tkinter import ttk
 
 
 # ansi colors
@@ -867,8 +868,6 @@ def info() -> None:
     Function which generated an Info on how to use the Programm (TODO)
     """
 
-    pass
-
 
 # Menu
 def menu() -> str:
@@ -945,6 +944,19 @@ def tkinterMenu(execute):
 
     def runCommand(command):
         root.withdraw()
+        print(add)
+        
+        if command == "add":
+            # try to load the config to add a link via the UI
+            
+            try:
+                config = load()
+                addWindow(root, config)
+                return
+            except Exception:
+                print("Could not load the Config!")
+                print("Create a config first")
+                return
 
         try:
             execute(command)
@@ -1025,6 +1037,172 @@ def tkinterMenu(execute):
 
 
     root.mainloop()
+
+
+# Add Command Menu
+def addWindow(root, config: AppConfig):
+    """
+    Function to generate a sub menu for the add Command
+
+    Args:
+        root (_type_): The root window
+        config (_type_): the config for the programm
+    """
+
+    window = tk.Toplevel(root)
+    window.title("Add Link")
+    window.geometry("450x450")
+
+    fields = {}
+
+    labels = [
+        "Name",
+        "Author",
+        "License",
+        "License Link",
+        "Link",
+        "Description",
+    ]
+
+    for text in labels:
+        ttk.Label(window, text=text).pack(anchor="w", padx=10)
+        e = ttk.Entry(window, width=50)
+        e.pack(padx=10, pady=3)
+        fields[text] = e
+
+    show = tk.BooleanVar(value=True)
+    changed = tk.BooleanVar(value=False)
+
+    ttk.Checkbutton(
+        window,
+        text="Show in list",
+        variable=show
+    ).pack(anchor="w", padx=10)
+
+    ttk.Checkbutton(
+        window,
+        text="Changes were made",
+        variable=changed
+    ).pack(anchor="w", padx=10)
+
+
+    def saveLink():
+
+        link = Link(
+            name=fields["Name"].get() or None,
+            author=fields["Author"].get() or None,
+            license=fields["License"].get() or None,
+            licenselink=fields["License Link"].get() or None,
+            link=fields["Link"].get(),
+            description=fields["Description"].get(),
+            showinlist=show.get(),
+            changenotice=changed.get(),
+            date=datetime.now().isoformat(),
+        )
+
+        config.links.append(link)
+        save(config)
+
+        window.destroy()
+
+
+    ttk.Button(
+        window,
+        text="Save",
+        command=saveLink
+    ).pack(pady=15)
+
+
+# Add 4 Command Menu
+def addWindow4(root, config: AppConfig):
+    """
+    Function to generate a sub menu for the add Command
+
+    Args:
+        root (_type_): The root window
+        config (_type_): the config for the programm
+    """
+
+    window = tk.Toplevel(root)
+    window.title("Add Link from Sketchfab")
+    window.geometry("450x450")
+
+    fields = {}
+
+    labels = [
+        "Content"
+    ]
+
+    for text in labels:
+        ttk.Label(window, text=text).pack(anchor="w", padx=10)
+        e = ttk.Entry(window, width=50)
+        e.pack(padx=10, pady=3)
+        fields[text] = e
+
+    def saveLink():
+
+        link = Link4(
+            link=fields["Content"].get(),
+            date=datetime.now().isoformat()
+        )
+
+        config.links4.append(link)
+        save(config)
+
+        window.destroy()
+
+
+    ttk.Button(
+        window,
+        text="Save",
+        command=saveLink
+    ).pack(pady=15)
+
+
+# Add 5 Command Menu
+def addWindow5(root, config: AppConfig):
+    """
+    Function to generate a sub menu for the add Command
+
+    Args:
+        root (_type_): The root window
+        config (_type_): the config for the programm
+    """
+
+    window = tk.Toplevel(root)
+    window.title("Add License File")
+    window.geometry("450x450")
+
+    fields = {}
+
+    labels = [
+        "Path"
+    ]
+
+    for text in labels:
+        ttk.Label(window, text=text).pack(anchor="w", padx=10)
+        e = ttk.Entry(window, width=50)
+        e.pack(padx=10, pady=3)
+        fields[text] = e
+
+    def saveLink():
+
+        link = Link4(
+            link=fields["Path"].get(),
+            date=datetime.now().isoformat()
+        )
+
+        config.links5.append(link)
+        save(config)
+
+        window.destroy()
+
+
+    ttk.Button(
+        window,
+        text="Save",
+        command=saveLink
+    ).pack(pady=15)
 
 
 # ---------- EXECUTE ----------

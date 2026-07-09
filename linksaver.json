@@ -1,17 +1,26 @@
 {
     "projectname": "l2",
     "pretty": true,
-    "links": [],
+    "links": [
+        {
+            "link": "we",
+            "description": "we",
+            "name": "qw",
+            "license": "we",
+            "author": "qw",
+            "licenselink": "we",
+            "showinlist": true,
+            "changenotice": false,
+            "date": "2026-07-09T14:23:42.268288"
+        }
+    ],
     "links2": [],
     "links3": [],
     "links4": [],
     "links5": [],
     "linkspkglock": [],
     "linkscargolock": [],
-    "settings": {
-        "selectmenu": false,
-        "useui": false
-    },
+    "settings": null,
     "note": "This file was generated with linksaver from seg from the samengine project. https://samengine.js.org or https://github.com/shadowdara/seg",
     "$schema": "https://raw.githubusercontent.com/ShadowDara/samengine/refs/heads/master/.samengine/shema.linksaver.json"
 }
