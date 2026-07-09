@@ -20,9 +20,6 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List
-import tkinter as tk
-from tkinter import messagebox
-from tkinter import ttk
 
 
 # Version for linksaver
@@ -97,7 +94,6 @@ class Settings:
     """
 
     selectmenu: bool
-    useui: bool
 
 
 @dataclass
@@ -169,12 +165,10 @@ SCHEMA_URL = (
 # ---------- PATH ----------
 
 def configPath() -> Path:
-    return Path.cwd() / "linksaver.json"
+    script_dir = Path(__file__).resolve().parent
+    
+    return script_dir / "linksaver.json"
     # return Path.cwd() / ".samengine" / "linksaver.json"
-
-def configPath2() -> Path:
-    return Path.cwd() / "linksaver.json"
-
 
 # ---------- PROMPT ----------
 
@@ -197,7 +191,6 @@ def prompt(message: str) -> str:
 def newSettings() -> Settings:
     return Settings(
         selectmenu=False,
-        useui=False,
     )
 
 
@@ -934,302 +927,6 @@ def menu() -> str:
         print("Invalid selection.")
 
 
-def tkinterMenu(execute, config: AppConfig):
-    """
-    Tkinter Menu for the Program to select everthing with GUI
-    """
-
-    root = tk.Tk()
-
-    root.title("Linksaver")
-    root.geometry("300x700")
-
-    title = tk.Label(
-        root,
-        text="Linksaver",
-        font=("Arial", 20)
-    )
-    title.pack(pady=20)
-
-
-    commands = [
-        ("Open all links", ""),
-        ("Add link", "add"),
-        ("Add text entry", "add2"),
-        ("Add license file", "add3"),
-        ("Generate Markdown", "view"),
-        ("Generate TXT", "viewx"),
-        ("List credits", "list"),
-        ("Import package-lock", "addpkg"),
-        ("Import Cargo.lock", "addcargo"),
-        ("Help", "help"),
-    ]
-
-
-    def runCommand(command: str, config: AppConfig):
-        root.withdraw()
-        
-        if command == "add":
-            # try to load the config to add a link via the UI
-            
-            addWindow(root, config)
-        
-        if command == "add4":
-            
-            addWindow4(root, config)
-        
-        if command == "add5":
-            
-            addWindow5(root, config)
-
-
-        try:
-            execute(command, config)
-
-        except Exception as e:
-            messagebox.showerror(
-                "Error",
-                str(e)
-            )
-
-        root.deiconify()
-
-
-    def openSelectionMenu(name: str, command: str, config: AppConfig):
-
-        window = tk.Toplevel(root)
-
-        window.title(name)
-        window.geometry("300x200")
-
-        label = tk.Label(
-            window,
-            text=f"Execute {name}?",
-            font=("Arial", 14)
-        )
-        label.pack(pady=20)
-
-
-        def yes():
-            window.destroy()
-            runCommand(command, config)
-
-
-        def no():
-            window.destroy()
-
-
-        tk.Button(
-            window,
-            text="Execute",
-            command=yes,
-            width=20
-        ).pack(pady=5)
-
-
-        tk.Button(
-            window,
-            text="Cancel",
-            command=no,
-            width=20
-        ).pack(pady=5)
-
-
-
-    for name, command in commands:
-
-        button = tk.Button(
-            root,
-            text=name,
-            width=30,
-            height=2,
-            command=lambda n=name, c=command:
-                openSelectionMenu(n, c, config)
-        )
-
-        button.pack(pady=4)
-
-
-    exitButton = tk.Button(
-        root,
-        text="Exit",
-        width=30,
-        height=2,
-        command=root.destroy
-    )
-
-    exitButton.pack(pady=15)
-
-
-    root.mainloop()
-
-
-# Add Command Menu
-def addWindow(root, config: AppConfig):
-    """
-    Function to generate a sub menu for the add Command
-
-    Args:
-        root (_type_): The root window
-        config (_type_): the config for the programm
-    """
-
-    window = tk.Toplevel(root)
-    window.title("Add Link")
-    window.geometry("450x450")
-
-    fields = {}
-
-    labels = [
-        "Name",
-        "Author",
-        "License",
-        "License Link",
-        "Link",
-        "Description",
-    ]
-
-    for text in labels:
-        ttk.Label(window, text=text).pack(anchor="w", padx=10)
-        e = ttk.Entry(window, width=50)
-        e.pack(padx=10, pady=3)
-        fields[text] = e
-
-    show = tk.BooleanVar(value=True)
-    changed = tk.BooleanVar(value=False)
-
-    ttk.Checkbutton(
-        window,
-        text="Show in list",
-        variable=show
-    ).pack(anchor="w", padx=10)
-
-    ttk.Checkbutton(
-        window,
-        text="Changes were made",
-        variable=changed
-    ).pack(anchor="w", padx=10)
-
-
-    def saveLink():
-
-        link = Link(
-            name=fields["Name"].get() or None,
-            author=fields["Author"].get() or None,
-            license=fields["License"].get() or None,
-            licenselink=fields["License Link"].get() or None,
-            link=fields["Link"].get(),
-            description=fields["Description"].get(),
-            showinlist=show.get(),
-            changenotice=changed.get(),
-            date=datetime.now().isoformat(),
-        )
-
-        config.links.append(link)
-        save(config)
-
-        window.destroy()
-
-
-    ttk.Button(
-        window,
-        text="Save",
-        command=saveLink
-    ).pack(pady=15)
-
-
-# Add 4 Command Menu
-def addWindow4(root, config: AppConfig):
-    """
-    Function to generate a sub menu for the add4 Command
-
-    Args:
-        root (_type_): The root window
-        config (_type_): the config for the programm
-    """
-
-    window = tk.Toplevel(root)
-    window.title("Add Link from Sketchfab")
-    window.geometry("450x450")
-
-    fields = {}
-
-    labels = [
-        "Content"
-    ]
-
-    for text in labels:
-        ttk.Label(window, text=text).pack(anchor="w", padx=10)
-        e = ttk.Entry(window, width=50)
-        e.pack(padx=10, pady=3)
-        fields[text] = e
-
-    def saveLink():
-
-        link = Link4(
-            link=fields["Content"].get(),
-            date=datetime.now().isoformat()
-        )
-
-        config.links4.append(link)
-        save(config)
-
-        window.destroy()
-
-
-    ttk.Button(
-        window,
-        text="Save",
-        command=saveLink
-    ).pack(pady=15)
-
-
-# Add 5 Command Menu
-def addWindow5(root, config: AppConfig):
-    """
-    Function to generate a sub menu for the add5 Command
-
-    Args:
-        root (_type_): The root window
-        config (_type_): the config for the programm
-    """
-
-    window = tk.Toplevel(root)
-    window.title("Add License File")
-    window.geometry("450x450")
-
-    fields = {}
-
-    labels = [
-        "Path"
-    ]
-
-    for text in labels:
-        ttk.Label(window, text=text).pack(anchor="w", padx=10)
-        e = ttk.Entry(window, width=50)
-        e.pack(padx=10, pady=3)
-        fields[text] = e
-
-    def saveLink():
-
-        link = Link4(
-            link=fields["Path"].get(),
-            date=datetime.now().isoformat()
-        )
-
-        config.links5.append(link)
-        save(config)
-
-        window.destroy()
-
-
-    ttk.Button(
-        window,
-        text="Save",
-        command=saveLink
-    ).pack(pady=15)
-
-
 # ---------- EXECUTE ----------
 
 def execute(arg: str, config: AppConfig) -> None:
@@ -1294,11 +991,6 @@ def main() -> None:
                 arg = menu()
                 return
 
-            if config.settings.useui is True:
-                # select via UI Menu
-
-                tkinterMenu(execute, config)
-                return
 
         # More than one argument
         # then run linksaver in cli mode
@@ -1315,6 +1007,7 @@ def main() -> None:
         print("Linksaver: Config Error:", e)
         print("Run 'init' first or run with help!")
         
+        input()
         sys.exit(1)
 
 
