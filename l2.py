@@ -208,6 +208,13 @@ def newConfig(name: str) -> AppConfig:
 
 
 def save(config: AppConfig):
+    """
+    Fcuntion to save the Appconfig
+
+    Args:
+        config (AppConfig): all the config data of the Application
+    """
+    
     file = configPath()
 
     file.parent.mkdir(parents=True, exist_ok=True)
@@ -249,6 +256,9 @@ def load() -> AppConfig:
 
     if "$schema" not in data:
         data["$schema"] = SCHEMA_URL
+    
+    if "settings" not in data:
+        data["settings"] = newSettings()
 
     data.setdefault("links", [])
     data.setdefault("links2", [])
@@ -272,6 +282,7 @@ def load() -> AppConfig:
     config.links5 = [Link4(**x) for x in data["links5"]]
     config.linkspkglock = data["linkspkglock"]
     config.linkscargolock = data["linkscargolock"]
+    config.settings = data["settings"]
 
     return config
 
@@ -1116,7 +1127,7 @@ def addWindow(root, config: AppConfig):
 # Add 4 Command Menu
 def addWindow4(root, config: AppConfig):
     """
-    Function to generate a sub menu for the add Command
+    Function to generate a sub menu for the add4 Command
 
     Args:
         root (_type_): The root window
@@ -1162,7 +1173,7 @@ def addWindow4(root, config: AppConfig):
 # Add 5 Command Menu
 def addWindow5(root, config: AppConfig):
     """
-    Function to generate a sub menu for the add Command
+    Function to generate a sub menu for the add5 Command
 
     Args:
         root (_type_): The root window
@@ -1207,8 +1218,9 @@ def addWindow5(root, config: AppConfig):
 
 # ---------- EXECUTE ----------
 
-def execute(arg: str) -> None:
+def execute(arg: str, config: AppConfig) -> None:
     if arg in ("help", "-h", "--help"):
+        help()
         return
 
     if arg == "info":
@@ -1218,22 +1230,6 @@ def execute(arg: str) -> None:
     if arg == "init":
         init()
         return
-
-    try:
-        config = load()
-    except Exception as e:
-        if arg == "":
-            help()
-            return
-
-        # When a Config Error Appears
-        print("Linksaver: Config Error:", e)
-        print("Run 'init' first or run with help!")
-        sys.exit(1)
-
-
-    if config.settings is not None and config.settings.selectmenu is True:
-        arg == menu()
 
     if arg == "add":
         add(config)
@@ -1261,16 +1257,51 @@ def execute(arg: str) -> None:
 
     elif arg == "open":
         openAll(config)
-
-
-def main() -> None:
-    # get first arg after the filename
-    arg = sys.argv[1] if len(sys.argv) > 1 else ""
     
-    if len(sys.argv) > 1:
-        execute(sys.argv[1])
     else:
-        tkinterMenu(execute)
+        print("Linksaver: Argument not found!")
+
+
+# Main
+def main() -> None:
+    """
+    Main function which executes the programm
+    """
+
+    # Try loading the Config
+    try:
+        # Load the Config
+        config = load()
+
+        if config.settings is not None:
+            if config.settings.selectmenu is True:
+                # Select via a cli selector
+
+                arg = menu()
+                return
+
+            if config.settings.useui is True:
+                # select via UI Menu
+
+                tkinterMenu(execute)
+                return
+
+        # More than one argument
+        # then run linksaver in cli mode
+        if len(sys.argv) > 1:
+            # get first arg after the filename
+            arg = sys.argv[1]
+
+            execute(arg, config)
+        else:
+            print("Linksaver: run with one argument of help!")
+
+    except Exception as e:
+        # When a Config Error Appears
+        print("Linksaver: Config Error:", e)
+        print("Run 'init' first or run with help!")
+        
+        sys.exit(1)
 
 
 # Main stuff where everthing gets executed

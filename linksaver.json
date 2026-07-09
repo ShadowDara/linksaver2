@@ -20,7 +20,10 @@
     "links5": [],
     "linkspkglock": [],
     "linkscargolock": [],
-    "settings": null,
+    "settings": {
+        "useui": false,
+        "selectmenu": false
+    },
     "note": "This file was generated with linksaver from seg from the samengine project. https://samengine.js.org or https://github.com/shadowdara/seg",
     "$schema": "https://raw.githubusercontent.com/ShadowDara/samengine/refs/heads/master/.samengine/shema.linksaver.json"
 }
