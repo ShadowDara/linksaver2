@@ -282,7 +282,7 @@ def load() -> AppConfig:
     config.links5 = [Link4(**x) for x in data["links5"]]
     config.linkspkglock = data["linkspkglock"]
     config.linkscargolock = data["linkscargolock"]
-    config.settings = data["settings"]
+    config.settings = Settings(**data["settings"])
 
     return config
 
@@ -920,7 +920,7 @@ def menu() -> str:
         print("Invalid selection.")
 
 
-def tkinterMenu(execute):
+def tkinterMenu(execute, config: AppConfig):
     """
     Tkinter Menu for the Program to select everthing with GUI
     """
@@ -940,7 +940,6 @@ def tkinterMenu(execute):
 
     commands = [
         ("Open all links", ""),
-        ("Init", "init"),
         ("Add link", "add"),
         ("Add text entry", "add2"),
         ("Add license file", "add3"),
@@ -953,24 +952,26 @@ def tkinterMenu(execute):
     ]
 
 
-    def runCommand(command):
+    def runCommand(command: str, config: AppConfig):
         root.withdraw()
         print(add)
         
         if command == "add":
             # try to load the config to add a link via the UI
             
-            try:
-                config = load()
-                addWindow(root, config)
-                return
-            except Exception:
-                print("Could not load the Config!")
-                print("Create a config first")
-                return
+            addWindow(root, config)
+        
+        if command == "add4":
+            
+            addWindow4(root, config)
+        
+        if command == "add5":
+            
+            addWindow5(root, config)
+
 
         try:
-            execute(command)
+            execute(command, config)
 
         except Exception as e:
             messagebox.showerror(
@@ -981,7 +982,7 @@ def tkinterMenu(execute):
         root.deiconify()
 
 
-    def openSelectionMenu(name, command):
+    def openSelectionMenu(name: str, command: str, config: AppConfig):
 
         window = tk.Toplevel(root)
 
@@ -998,7 +999,7 @@ def tkinterMenu(execute):
 
         def yes():
             window.destroy()
-            runCommand(command)
+            runCommand(command, config)
 
 
         def no():
@@ -1030,7 +1031,7 @@ def tkinterMenu(execute):
             width=30,
             height=2,
             command=lambda n=name, c=command:
-                openSelectionMenu(n, c)
+                openSelectionMenu(n, c, config)
         )
 
         button.pack(pady=4)
@@ -1271,7 +1272,7 @@ def main() -> None:
     # Try loading the Config
     try:
         # Load the Config
-        config = load()
+        config: AppConfig = load()
 
         if config.settings is not None:
             if config.settings.selectmenu is True:
@@ -1283,7 +1284,7 @@ def main() -> None:
             if config.settings.useui is True:
                 # select via UI Menu
 
-                tkinterMenu(execute)
+                tkinterMenu(execute, config)
                 return
 
         # More than one argument
