@@ -21,7 +21,6 @@
     "linkspkglock": [],
     "linkscargolock": [],
     "settings": {
-        "useui": true,
         "selectmenu": true
     },
     "note": "This file was generated with linksaver from seg from the samengine project. https://samengine.js.org or https://github.com/shadowdara/seg",
