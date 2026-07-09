@@ -25,6 +25,10 @@ from tkinter import messagebox
 from tkinter import ttk
 
 
+# Version for linksaver
+VERSION: str = "3.0.0"
+
+
 # ansi colors
 
 
@@ -727,6 +731,16 @@ def addPkgLock(config: AppConfig):
 # ---------- ADD CARGO LOCK LICENSES ----------
 
 def addCargoLock(config: AppConfig):
+    """
+    Function to add all the licenses from Cargo packages
+
+    Args:
+        config (AppConfig): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    
     lockFile = Path.cwd() / "Cargo.lock"
 
     if not lockFile.exists():
