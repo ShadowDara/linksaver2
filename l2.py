@@ -954,7 +954,6 @@ def tkinterMenu(execute, config: AppConfig):
 
     def runCommand(command: str, config: AppConfig):
         root.withdraw()
-        print(add)
         
         if command == "add":
             # try to load the config to add a link via the UI
