@@ -6,11 +6,14 @@ import os
 import platform
 import subprocess
 import sys
+import re
 import webbrowser
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List
+import tkinter as tk
+from tkinter import messagebox
 
 
 # ansi colors
@@ -145,7 +148,8 @@ SCHEMA_URL = (
 # ---------- PATH ----------
 
 def configPath() -> Path:
-    return Path.cwd() / ".samengine" / "linksaver.json"
+    return Path.cwd() / "linksaver.json"
+    # return Path.cwd() / ".samengine" / "linksaver.json"
 
 def configPath2() -> Path:
     return Path.cwd() / "linksaver.json"
@@ -845,12 +849,122 @@ def menu() -> str:
         print("Invalid selection.")
 
 
+def tkinterMenu(execute):
+    root = tk.Tk()
+
+    root.title("Linksaver")
+    root.geometry("300x700")
+
+    title = tk.Label(
+        root,
+        text="Linksaver",
+        font=("Arial", 20)
+    )
+    title.pack(pady=20)
+
+
+    commands = [
+        ("Open all links", ""),
+        ("Init", "init"),
+        ("Add link", "add"),
+        ("Add text entry", "add2"),
+        ("Add license file", "add3"),
+        ("Generate Markdown", "view"),
+        ("Generate TXT", "viewx"),
+        ("List credits", "list"),
+        ("Import package-lock", "addpkg"),
+        ("Import Cargo.lock", "addcargo"),
+        ("Help", "help"),
+    ]
+
+
+    def runCommand(command):
+        root.withdraw()
+
+        try:
+            execute(command)
+
+        except Exception as e:
+            messagebox.showerror(
+                "Error",
+                str(e)
+            )
+
+        root.deiconify()
+
+
+    def openSelectionMenu(name, command):
+
+        window = tk.Toplevel(root)
+
+        window.title(name)
+        window.geometry("300x200")
+
+        label = tk.Label(
+            window,
+            text=f"Execute {name}?",
+            font=("Arial", 14)
+        )
+        label.pack(pady=20)
+
+
+        def yes():
+            window.destroy()
+            runCommand(command)
+
+
+        def no():
+            window.destroy()
+
+
+        tk.Button(
+            window,
+            text="Execute",
+            command=yes,
+            width=20
+        ).pack(pady=5)
+
+
+        tk.Button(
+            window,
+            text="Cancel",
+            command=no,
+            width=20
+        ).pack(pady=5)
+
+
+
+    for name, command in commands:
+
+        button = tk.Button(
+            root,
+            text=name,
+            width=30,
+            height=2,
+            command=lambda n=name, c=command:
+                openSelectionMenu(n, c)
+        )
+
+        button.pack(pady=4)
+
+
+    exitButton = tk.Button(
+        root,
+        text="Exit",
+        width=30,
+        height=2,
+        command=root.destroy
+    )
+
+    exitButton.pack(pady=15)
+
+
+    root.mainloop()
+
+
 # ---------- EXECUTE ----------
 
-def main():
-    # get first arg after the filename
-    arg = sys.argv[1] if len(sys.argv) > 1 else ""
-
+def execute(arg: str):
     if arg in ("help", "-h", "--help"):
         return
 
@@ -866,7 +980,6 @@ def main():
         config = load()
     except Exception as e:
         if arg == "":
-            print("cc")
             help()
             return
         else:
@@ -874,7 +987,7 @@ def main():
             print("Run 'init' first or run with help!")
             sys.exit(1)
     
-    if config.settings.selectmenu == True:
+    if config.settings.selectmenu is True:
         arg == menu()
 
     if arg == "add":
@@ -893,7 +1006,7 @@ def main():
         viewx(config)
 
     elif arg == "list":
-        list_links(config)
+        list(config)
 
     elif arg == "addpkg":
         addPkgLock(config)
@@ -903,7 +1016,17 @@ def main():
 
     elif arg == "open":
         openAll(config)
-        
+
+
+def main() -> None:
+    # get first arg after the filename
+    arg = sys.argv[1] if len(sys.argv) > 1 else ""
+    
+    if len(sys.argv) > 1:
+        execute(sys.argv[1])
+    else:
+        tkinterMenu(execute)
+
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,17 @@
+{
+    "projectname": "l2",
+    "pretty": true,
+    "links": [],
+    "links2": [],
+    "links3": [],
+    "links4": [],
+    "links5": [],
+    "linkspkglock": [],
+    "linkscargolock": [],
+    "settings": {
+        "selectmenu": false,
+        "useui": false
+    },
+    "note": "This file was generated with linksaver from seg from the samengine project. https://samengine.js.org or https://github.com/shadowdara/seg",
+    "$schema": "https://raw.githubusercontent.com/ShadowDara/samengine/refs/heads/master/.samengine/shema.linksaver.json"
+}
