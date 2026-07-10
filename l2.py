@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 
 # Linksaver
 # by Shadowdara
@@ -987,8 +987,12 @@ def main() -> None:
         if config.settings is not None:
             if config.settings.selectmenu is True:
                 # Select via a cli selector
-
                 arg = menu()
+
+                # Execute the selection
+                execute(arg, config)
+
+                # finish
                 return
 
 
