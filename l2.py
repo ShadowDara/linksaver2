@@ -1,7 +1,12 @@
-
-
 # Linksaver
 # by Shadowdara
+
+# This is python cli script to save your links for your projects
+# Read the Docs for more Infos
+# https://shadowdara.github.io/docs/#/linksaver
+
+# licensed under Appache license 2.0 by Shadowdara 2026
+# DO NOT REMOVE THIS NOTICE !!!
 
 # pylint: disable=invalid-name
 
