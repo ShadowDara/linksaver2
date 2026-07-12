@@ -5,3 +5,4 @@
 dist
 /src/linksaver.egg-info
 env
+/target
