@@ -210,7 +210,7 @@ def load() -> AppConfig:
         data["$schema"] = SCHEMA_URL
 
     if "settings" not in data:
-        data["settings"] = newSettings()
+        data["settings"] = asdict(newSettings())
 
     data.setdefault("links", [])
     data.setdefault("links2", [])

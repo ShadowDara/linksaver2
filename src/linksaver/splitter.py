@@ -101,6 +101,10 @@ def check_settings(config: AppConfig) -> AppConfig:
 
 
 def view(config: AppConfig) -> None:
+    repo = Path.cwd()
+    
+    print(f"Max file size: {config.git.splitter.maxfilesize} MB")
+    
     files = find_large_files_in_git_repo(
         os.getcwd(),
         config
@@ -112,7 +116,7 @@ def view(config: AppConfig) -> None:
 
     for file in files:
         size = file.stat().st_size / 1024 / 1024
-        print(f"{size:.2f} MB  {file}")
+        print(f"{size:.2f} MB  {file.relative_to(repo).as_posix()}")
 
 
 def restore(config: AppConfig) -> None:
@@ -213,21 +217,21 @@ def split(config: AppConfig) -> None:
                     dst.write(data)
 
                 parts.append(
-                    str(part.relative_to(repo))
+                    str(part.relative_to(repo)).replace("\\", "/")
                 )
 
                 index += 1
 
         # Original entfernen
-        file.unlink()
+        #file.unlink()
 
         manifest.append({
-            "file": str(relative),
+            "file": str(relative).replace("\\", "/"),
             "parts": parts
         })
 
         print(
-            f"gesplittet: {file}"
+            f"splitted: {file.relative_to(repo).as_posix()}"
         )
 
 
