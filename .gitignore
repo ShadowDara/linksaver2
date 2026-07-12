@@ -8,3 +8,5 @@ env
 /build
 .samengine/links.info.txt
 .samengine/links.info.md
+/.vs
+/out
