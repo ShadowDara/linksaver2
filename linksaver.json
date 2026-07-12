@@ -1,0 +1,23 @@
+{
+    "projectname": "Linksaver",
+    "pretty": true,
+    "links": [],
+    "links2": [],
+    "links3": [],
+    "links4": [],
+    "links5": [],
+    "linkspkglock": [],
+    "linkscargolock": [],
+    "settings": {
+        "selectmenu": false
+    },
+    "git": {
+        "submodules": [],
+        "splitter": {
+            "maxfilesize": 99,
+            "ignorepath": []
+        }
+    },
+    "note": "This file was generated with linksaver by Shadowdara for the samengine project. see https://shadowara.github.io/docs/#/linksaver or or https://github.com/shadowdara/l2 for more infos",
+    "$schema": "https://raw.githubusercontent.com/ShadowDara/samengine/refs/heads/master/.samengine/shema.linksaver.json"
+}
