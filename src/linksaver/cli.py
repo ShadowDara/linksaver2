@@ -14,11 +14,11 @@
 Linksaver by Shadowdara
 """
 
+from __future__ import annotations
 import time
 import json
 import os
 import platform
-import subprocess
 import sys
 import re
 from dataclasses import dataclass, field, asdict
@@ -26,6 +26,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Union
 import subprocess
+
+from . import splitter
+from .config import AppConfig, Settings, Submodules, GitData, Link, Link4, PackageInfo, save, load, configPath, newConfig
 
 
 # Version for linksaver
@@ -91,117 +94,6 @@ BG_BRIGHT_CYAN = "\x1b[106m"
 BG_BRIGHT_WHITE = "\x1b[107m"
 
 
-# ---------- TYPES ----------
-
-@dataclass
-class Submodules:
-    """
-    Dataclass for the Gitsubmodules clone data
-    """
-
-    desc: str
-    clonedir: str
-    dir: str
-    repolink: str
-    repocommit: str
-
-
-@dataclass
-class GitData:
-    """
-    Dataclass for data for options
-    """
-    
-    submodules: List[Submodules] = field(default_factory=list)
-
-
-@dataclass
-class Settings:
-    """
-    Settings Class for the program
-    """
-
-    selectmenu: bool
-
-
-@dataclass
-class Link:
-    """
-    Link Class to save a standard Link
-    """
-
-    link: str
-    description: str
-    name: Optional[str] = None
-    license: Optional[str] = None
-    author: Optional[str] = None
-    licenselink: Optional[str] = None
-    showinlist: bool = True
-    changenotice: bool = False
-    date: Optional[str] = None
-
-
-@dataclass
-class PackageInfo:
-    name: str
-    link: str
-    version: str
-    license: Optional[Union[str, list[str]]] = None
-    date: str
-
-
-@dataclass
-class Link4:
-    link: str
-    date: str
-
-
-@dataclass
-class AppConfig:
-    """
-    The AppConfig for the l2 program
-    """
-
-    projectname: str
-    pretty: bool = True
-
-    schema: Optional[str] = None
-
-    links: List[Link] = field(default_factory=list)
-    links2: List[str] = field(default_factory=list)
-    links3: List[str] = field(default_factory=list)
-    links4: List[Link4] = field(default_factory=list)
-    links5: List[Link4] = field(default_factory=list)
-
-    linkspkglock: List[PackageInfo] = field(default_factory=list)
-    linkscargolock: List[PackageInfo] = field(default_factory=list)
-        
-    settings: Optional[Settings] = None
-    
-    git: Optional[GitData] = None
-
-    note: Optional[str] = None
-
-
-# ---------- CONSTANTS ----------
-
-NOTE = (
-    "This file was generated with linksaver by Shadowdara for the samengine project. see https://shadowara.github.io/docs/#/linksaver or or https://github.com/shadowdara/l2 for more infos"
-)
-
-SCHEMA_URL = (
-    "https://raw.githubusercontent.com/ShadowDara/samengine/"
-    "refs/heads/master/.samengine/shema.linksaver.json"
-)
-
-
-# ---------- PATH ----------
-
-def configPath() -> Path:
-    
-    return Path.cwd() / "linksaver.json"
-    # return Path.cwd() / ".samengine" / "linksaver.json"
-
 # ---------- PROMPT ----------
 
 def prompt(message: str) -> str:
@@ -216,113 +108,6 @@ def prompt(message: str) -> str:
     """
 
     return input(message).strip()
-
-
-# ---------- CONFIG ----------
-
-def newSettings() -> Settings:
-    return Settings(
-        selectmenu=False,
-    )
-
-
-def newConfig(name: str) -> AppConfig:
-    return AppConfig(
-        projectname=name,
-        schema=SCHEMA_URL,
-        pretty=True,
-        settings=newSettings(),
-        note=NOTE,
-    )
-
-
-def save(config: AppConfig):
-    """
-    Fcuntion to save the Appconfig
-
-    Args:
-        config (AppConfig): all the config data of the Application
-    """
-    
-    file = configPath()
-
-    file.parent.mkdir(parents=True, exist_ok=True)
-
-    data = asdict(config)
-
-    # schema heißt im JSON $schema
-    data["$schema"] = data.pop("schema")
-
-    if config.pretty:
-        text = json.dumps(data, indent=4, ensure_ascii=False)
-    else:
-        text = json.dumps(data, ensure_ascii=False)
-
-    file.write_text(text, encoding="utf8")
-
-
-def load() -> AppConfig:
-    """
-    function which loads the linksaver config
-
-    Raises:
-        FileNotFoundError: Config file not found
-        Exception: _description_
-
-    Returns:
-        AppConfig: The config data for the programm
-    """
-    
-    file = configPath()
-
-    if not file.exists():
-        raise FileNotFoundError("config not found")
-
-    data = json.loads(file.read_text(encoding="utf8"))
-
-    if not data.get("projectname"):
-        raise Exception("projectname must be set")
-
-    if "$schema" not in data:
-        data["$schema"] = SCHEMA_URL
-    
-    if "settings" not in data:
-        data["settings"] = newSettings()
-
-    data.setdefault("links", [])
-    data.setdefault("links2", [])
-    data.setdefault("links3", [])
-    data.setdefault("links4", [])
-    data.setdefault("links5", [])
-    data.setdefault("linkspkglock", [])
-    data.setdefault("linkscargolock", [])
-
-    config = AppConfig(
-        projectname=data["projectname"],
-        pretty=data.get("pretty", True),
-        schema=data["$schema"],
-        note=NOTE,
-    )
-
-    config.links = [Link(**x) for x in data["links"]]
-    config.links2 = data["links2"]
-    config.links3 = data["links3"]
-    config.links4 = [Link4(**x) for x in data["links4"]]
-    config.links5 = [Link4(**x) for x in data["links5"]]
-    config.linkspkglock = data["linkspkglock"]
-    config.linkscargolock = data["linkscargolock"]
-    config.settings = Settings(**data["settings"])
-    
-    # <-- HIER einfügen
-    if data.get("git"):
-        config.git = GitData(
-            submodules=[
-                Submodules(**x)
-                for x in data["git"].get("submodules", [])
-            ]
-        )
-
-    return config
 
 
 # ---------- INIT ----------
@@ -1001,6 +786,9 @@ open            open all links
 info            get more infos about the programm
 addsubmodule    add a git submodule to the data (more infos in the docs)
 clonesubm       clone the git submodules (requires git)
+gitsplit        Split files in repo which are to big for git
+gitrestore      restore the splitted files
+gitview         View the files which are to big for git
 """)
 
 
@@ -1031,6 +819,9 @@ def menu() -> str:
         ("Help", "help"),
         ("add Git Submodule", "addsubmodule"),
         ("Clone git submodules", "clonesubm"),
+        ("Split to big files for git", "gitsplit"),
+        ("Restore the files which are to big", "gitrestore"),
+        ("View files which are to big", "gitview"),
         ("Exit", None),
     ]
 
@@ -1055,7 +846,7 @@ def menu() -> str:
 # ---------- EXECUTE ----------
 
 def execute(arg: str, config: AppConfig) -> None:
-    if arg in ("help", "-h", "--help"):
+    if arg in ("help", "-h", "--help", "h"):
         help()
         return
 
@@ -1096,6 +887,15 @@ def execute(arg: str, config: AppConfig) -> None:
     
     elif arg == "clonesubm":
         cloneGitSubmodules(config)
+
+    elif arg == "gitsplit":
+        splitter.splitter(config)
+
+    elif arg == "gitrestore":
+        splitter.restore_splitter(config)
+
+    elif arg == "gitview":
+        splitter.index(config)
 
     elif arg == "open":
         openAll(config)
@@ -1145,7 +945,7 @@ def main() -> None:
                 execute("init", newConfig("temp"))
                 return
             
-            if sys.argv[1] == "help" or sys.argv[1] == "h" or sys.argv[1] == "-h":
+            if sys.argv[1] in ("help", "-h", "--help", "h"):
                 help()
                 return
         

@@ -5,3 +5,6 @@
 dist
 /src/linksaver.egg-info
 env
+/build
+.samengine/links.info.txt
+.samengine/links.info.md
