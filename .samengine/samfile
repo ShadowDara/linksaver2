@@ -4,3 +4,4 @@ i:
 publish:
     RUN python -m build
     RUN twine upload dist/*
+    RUN pip install .

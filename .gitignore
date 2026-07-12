@@ -4,3 +4,4 @@
 /.venv
 dist
 /src/linksaver.egg-info
+env
