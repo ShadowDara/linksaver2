@@ -1,2 +1,6 @@
 i:
     RUN pip install .
+
+publish:
+    RUN python -m build
+    RUN twine upload dist/*

@@ -2,3 +2,5 @@
 .samengine/links.txt
 .idea
 /.venv
+dist
+/src/linksaver.egg-info
