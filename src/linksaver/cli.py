@@ -1136,9 +1136,14 @@ def main() -> None:
     except Exception as e:
         
         # Option to create a new config when no one exists
-        if len(sys.argv) > 1 and sys.argv[1] == "init":
-            execute("init", newConfig("temp"))
-            return
+        if len(sys.argv) > 1:
+            if sys.argv[1] == "init":
+                execute("init", newConfig("temp"))
+                return
+            
+            if sys.argv[1] == "help" or sys.argv[1] == "h" or sys.argv[1] == "-h":
+                help()
+                return
         
         # When a Config Error Appears
         banner()
