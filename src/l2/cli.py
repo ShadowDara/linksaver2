@@ -25,6 +25,7 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List
+import subprocess
 
 
 # Version for linksaver
@@ -98,6 +99,8 @@ class Submodules:
     Dataclass for the Gitsubmodules clone data
     """
 
+    desc: str
+    clonedir: str
     dir: str
     repolink: str
     repocommit: str
@@ -179,8 +182,7 @@ class AppConfig:
 # ---------- CONSTANTS ----------
 
 NOTE = (
-    "This file was generated with linksaver from seg from the samengine project. "
-    "https://samengine.js.org or https://github.com/shadowdara/seg"
+    "This file was generated with linksaver by Shadowdara for the samengine project. see https://shadowara.github.io/docs/#/linksaver or or https://github.com/shadowdara/l2 for more infos"
 )
 
 SCHEMA_URL = (
@@ -192,9 +194,8 @@ SCHEMA_URL = (
 # ---------- PATH ----------
 
 def configPath() -> Path:
-    script_dir = Path(__file__).resolve().parent
     
-    return script_dir / "linksaver.json"
+    return Path.cwd() / "linksaver.json"
     # return Path.cwd() / ".samengine" / "linksaver.json"
 
 # ---------- PROMPT ----------
@@ -307,6 +308,15 @@ def load() -> AppConfig:
     config.linkspkglock = data["linkspkglock"]
     config.linkscargolock = data["linkscargolock"]
     config.settings = Settings(**data["settings"])
+    
+    # <-- HIER einfügen
+    if data.get("git"):
+        config.git = GitData(
+            submodules=[
+                Submodules(**x)
+                for x in data["git"].get("submodules", [])
+            ]
+        )
 
     return config
 
@@ -887,14 +897,18 @@ def addGitSubmodule(config: AppConfig) -> None:
         _type_: None
     """
     
-    dirrr = prompt("Dir: ")
+    desc = prompt("Description: ")
+    dirrr = prompt("Dir (where git clone is executed): ")
+    clonedir = prompt("The name for the repo dir: ")
     repolink = prompt("repo link: ")
     repocommit = prompt("repo commit: ")
     
     module = Submodules(
         dir=dirrr,
         repolink=repolink,
-        repocommit=repocommit
+        repocommit=repocommit,
+        clonedir=clonedir,
+        desc=desc
     )
     
     if config.git is None:
@@ -903,38 +917,86 @@ def addGitSubmodule(config: AppConfig) -> None:
     # add to the config
     config.git.submodules.append(module)
     
+    # DONT FORGET SAVING!
+    save(config)
+    
     print("Added new submodule")
     
 
+# Clone the gitsubmoules
+def cloneGitSubmodules(config: AppConfig) -> None:
+    print("Cloning depencies")
+    
+    old_path = os.getcwd()
+    
+    if config.git is None:
+        print("git option is None!")
+        return
+    
+    for e in config.git.submodules:        
+        # Reset the path
+        os.chdir(old_path)
+        
+        # Print Infos
+        print(e.desc)
+           
+        # Create dir
+        os.makedirs(os.getcwd() + "/" + e.dir, exist_ok=True)
+        
+        # Change the execution directory
+        os.chdir(os.getcwd() + "/" + e.dir)
+        
+        # Clone
+        clone_command = "git clone --recursive " +  e.repolink + " " + e.clonedir
+        subprocess.run(clone_command, shell=True)
+        
+        # Change dir to the clone dir
+        os.chdir(os.getcwd() + "/" + e.clonedir)
+        
+        # Run git checkout for that commit
+        checkout_command = "git checkout " + e.repocommit
+        subprocess.run(checkout_command, shell=True)
+        subprocess.run("git submodule update --init --recursive", shell=True)
+        
+        print(f"Cloned {e.clonedir} successfuly!")
+
+    print("Finished cloning every submodule!")
+
+
 # ---------- HELP ----------
 
-def help():
+def banner() -> None:
     print("""
-
 ██╗     ██╗███╗   ██╗██╗  ██╗███████╗ █████╗ ██╗   ██╗███████╗██████╗
 ██║     ██║████╗  ██║██║ ██╔╝██╔════╝██╔══██╗██║   ██║██╔════╝██╔══██╗
 ██║     ██║██╔██╗ ██║█████╔╝ ███████╗███████║██║   ██║█████╗  ██████╔╝
 ██║     ██║██║╚██╗██║██╔═██╗ ╚════██║██╔══██║╚██╗ ██╔╝██╔══╝  ██╔══██╗
 ███████╗██║██║ ╚████║██║  ██╗███████║██║  ██║ ╚████╔╝ ███████╗██║  ██║
 ╚══════╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝  ╚═══╝  ╚══════╝╚═╝  ╚═╝
+"""
+)
 
-by shadowdara
+
+def help():
+    banner()
+    print("""by shadowdara
 
 === Commands ===
 
-help      show this message
-init      create config
-add       add link
-add2      add entry (text only)
-add3      add license file
-view      formats links into Markdown
-viewx     formats links into TXT
-list      list links
-addpkg    add links from a package lock file
-addcargo  add links from a cargo lock file
-open      open all links
-info      get more infos about the programm
-
+help            show this message
+init            create config
+add             add link
+add2            add entry (text only)
+add3            add license file
+view            formats links into Markdown
+viewx           formats links into TXT
+list            list links
+addpkg          add links from a package lock file
+addcargo        add links from a cargo lock file
+open            open all links
+info            get more infos about the programm
+addsubmodule    add a git submodule to the data (more infos in the docs)
+clonesubm       clone the git submodules (requires git)
 """)
 
 
@@ -963,6 +1025,8 @@ def menu() -> str:
         ("Import package-lock.json", "addpkg"),
         ("Import Cargo.lock", "addcargo"),
         ("Help", "help"),
+        ("add Git Submodule", "addsubmodule"),
+        ("Clone git submodules", "clonesubm"),
         ("Exit", None),
     ]
 
@@ -1022,6 +1086,12 @@ def execute(arg: str, config: AppConfig) -> None:
 
     elif arg == "addcargo":
         addCargoLock(config)
+    
+    elif arg == "addsubmodule":
+        addGitSubmodule(config)
+    
+    elif arg == "clonesubm":
+        cloneGitSubmodules(config)
 
     elif arg == "open":
         openAll(config)
@@ -1064,7 +1134,14 @@ def main() -> None:
             print("Linksaver: run with one argument of help!")
 
     except Exception as e:
+        
+        # Option to create a new config when no one exists
+        if len(sys.argv) > 1 and sys.argv[1] == "init":
+            execute("init", newConfig("temp"))
+            return
+        
         # When a Config Error Appears
+        banner()
         print("Linksaver: Config Error:", e)
         print("Run 'init' first or run with help!")
 
