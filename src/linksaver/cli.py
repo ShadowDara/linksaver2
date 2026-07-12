@@ -24,7 +24,7 @@ import re
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Union
 import subprocess
 
 
@@ -146,7 +146,7 @@ class PackageInfo:
     name: str
     link: str
     version: str
-    license: str | list[str] | None
+    license: Optional[Union[str, list[str]]] = None
     date: str
 
 
@@ -158,6 +158,10 @@ class Link4:
 
 @dataclass
 class AppConfig:
+    """
+    The AppConfig for the l2 program
+    """
+
     projectname: str
     pretty: bool = True
 
