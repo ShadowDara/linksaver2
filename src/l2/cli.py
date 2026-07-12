@@ -14,13 +14,13 @@
 Linksaver by Shadowdara
 """
 
+import time
 import json
 import os
 import platform
 import subprocess
 import sys
 import re
-import webbrowser
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
@@ -93,6 +93,26 @@ BG_BRIGHT_WHITE = "\x1b[107m"
 # ---------- TYPES ----------
 
 @dataclass
+class Submodules:
+    """
+    Dataclass for the Gitsubmodules clone data
+    """
+
+    dir: str
+    repolink: str
+    repocommit: str
+
+
+@dataclass
+class GitData:
+    """
+    Dataclass for data for options
+    """
+    
+    submodules: List[Submodules] = field(default_factory=list)
+
+
+@dataclass
 class Settings:
     """
     Settings Class for the program
@@ -150,6 +170,8 @@ class AppConfig:
     linkscargolock: List[PackageInfo] = field(default_factory=list)
         
     settings: Optional[Settings] = None
+    
+    git: Optional[GitData] = None
 
     note: Optional[str] = None
 
@@ -239,7 +261,7 @@ def load() -> AppConfig:
     function which loads the linksaver config
 
     Raises:
-        Exception: _description_
+        FileNotFoundError: Config file not found
         Exception: _description_
 
     Returns:
@@ -249,7 +271,7 @@ def load() -> AppConfig:
     file = configPath()
 
     if not file.exists():
-        raise Exception("config not found")
+        raise FileNotFoundError("config not found")
 
     data = json.loads(file.read_text(encoding="utf8"))
 
@@ -854,6 +876,36 @@ def addCargoLock(config: AppConfig):
     print(f"Added {len(packages)} crates from Cargo.lock")
 
 
+def addGitSubmodule(config: AppConfig) -> None:
+    """
+    function to add a gitsubmodule to the datafile
+
+    Args:
+        config (AppConfig): the config of the program
+
+    Returns:
+        _type_: None
+    """
+    
+    dirrr = prompt("Dir: ")
+    repolink = prompt("repo link: ")
+    repocommit = prompt("repo commit: ")
+    
+    module = Submodules(
+        dir=dirrr,
+        repolink=repolink,
+        repocommit=repocommit
+    )
+    
+    if config.git is None:
+        config.git = GitData()
+    
+    # add to the config
+    config.git.submodules.append(module)
+    
+    print("Added new submodule")
+    
+
 # ---------- HELP ----------
 
 def help():
@@ -973,7 +1025,7 @@ def execute(arg: str, config: AppConfig) -> None:
 
     elif arg == "open":
         openAll(config)
-    
+
     else:
         print("Linksaver: Argument not found!")
 
@@ -1015,8 +1067,8 @@ def main() -> None:
         # When a Config Error Appears
         print("Linksaver: Config Error:", e)
         print("Run 'init' first or run with help!")
-        
-        input()
+
+        time.sleep(2)
         sys.exit(1)
 
 
