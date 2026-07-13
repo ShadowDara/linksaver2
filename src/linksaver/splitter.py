@@ -1,12 +1,13 @@
 # Git Splitter
 
+import json
+import shutil
 import os
 from pathlib import Path
 from dataclasses import dataclass
-from .config import AppConfig, GitData, save
 from typing import Optional, List, Union
-import json
-import shutil
+
+from .config import AppConfig, GitData, save
 
 
 @dataclass
@@ -26,6 +27,9 @@ def get_splitter_folder(repo: Path) -> Path:
 
 def find_large_files_in_git_repo(repo_path: str, config: AppConfig) -> List[Path]:
     repo = Path(repo_path).resolve()
+    
+    if config.git is None:
+        return []
 
     ignore_paths = []
 
@@ -103,6 +107,9 @@ def check_settings(config: AppConfig) -> AppConfig:
 def view(config: AppConfig) -> None:
     repo = Path.cwd()
     
+    if config.git is None:
+        return
+    
     print(f"Max file size: {config.git.splitter.maxfilesize} MB")
     
     files = find_large_files_in_git_repo(
@@ -171,6 +178,9 @@ def restore(config: AppConfig) -> None:
 
 def split(config: AppConfig) -> None:
     repo = Path.cwd()
+    
+    if config.git is None:
+        return
 
     files = find_large_files_in_git_repo(
         str(repo),
