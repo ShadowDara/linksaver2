@@ -789,6 +789,7 @@ clonesubm       clone the git submodules (requires git)
 gitsplit        Split files in repo which are to big for git
 gitrestore      restore the splitted files
 gitview         View the files which are to big for git
+s               a little status info with gitview and git status
 """)
 
 
@@ -841,6 +842,16 @@ def menu() -> str:
             pass
 
         print("Invalid selection.")
+
+
+# Status function
+def status() -> None:
+    """
+    Function to display an easy stats menu instead of git status
+    """
+
+    subprocess.run("git status", shell=True)
+    subprocess.run("l2 gitview", shell=True)
 
 
 # ---------- EXECUTE ----------
@@ -900,6 +911,9 @@ def execute(arg: str, config: AppConfig) -> None:
     elif arg == "open":
         openAll(config)
 
+    elif arg == "s":
+        status()
+
     else:
         print("Linksaver: Argument not found!")
 
@@ -948,6 +962,9 @@ def main() -> None:
             if sys.argv[1] in ("help", "-h", "--help", "h"):
                 help()
                 return
+
+            if sys.argv[1] == "s":
+                status()
         
         # When a Config Error Appears
         banner()
