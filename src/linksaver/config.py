@@ -26,6 +26,7 @@ class Submodules:
     dir: str
     repolink: str
     repocommit: str
+    branch: Optional[str] = None
 
 
 @dataclass
