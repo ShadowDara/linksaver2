@@ -1,0 +1,244 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Linksaver Config",
+  "type": "object",
+  "additionalProperties": false,
+
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri"
+    },
+
+    "projectname": {
+      "type": "string"
+    },
+
+    "pretty": {
+      "type": "boolean",
+      "default": true
+    },
+
+    "note": {
+      "type": ["string", "null"]
+    },
+
+    "settings": {
+      "$ref": "#/$defs/Settings"
+    },
+
+    "git": {
+      "type": ["object", "null"],
+      "$ref": "#/$defs/GitData"
+    },
+
+    "links": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Link"
+      }
+    },
+
+    "links2": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+
+    "links3": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+
+    "links4": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Link4"
+      }
+    },
+
+    "links5": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Link4"
+      }
+    },
+
+    "linkspkglock": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/PackageInfo"
+      }
+    },
+
+    "linkscargolock": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/PackageInfo"
+      }
+    }
+  },
+
+  "required": ["projectname"],
+
+  "$defs": {
+    "Settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "selectmenu": {
+          "type": "boolean"
+        }
+      },
+      "required": ["selectmenu"]
+    },
+
+    "Submodules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "desc": {
+          "type": "string"
+        },
+        "clonedir": {
+          "type": "string"
+        },
+        "dir": {
+          "type": "string"
+        },
+        "repolink": {
+          "type": "string"
+        },
+        "repocommit": {
+          "type": "string"
+        },
+        "branch": {
+          "type": ["string", "null"]
+        }
+      },
+      "required": ["desc", "clonedir", "dir", "repolink", "repocommit"]
+    },
+
+    "GitSplitter": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxfilesize": {
+          "type": "integer"
+        },
+        "ignorepath": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["maxfilesize", "ignorepath"]
+    },
+
+    "GitData": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "submodules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Submodules"
+          }
+        },
+        "splitter": {
+          "$ref": "#/$defs/GitSplitter"
+        }
+      },
+      "required": ["submodules", "splitter"]
+    },
+
+    "Link": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "link": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "license": {
+          "type": ["string", "null"]
+        },
+        "author": {
+          "type": ["string", "null"]
+        },
+        "licenselink": {
+          "type": ["string", "null"]
+        },
+        "showinlist": {
+          "type": "boolean"
+        },
+        "changenotice": {
+          "type": "boolean"
+        },
+        "date": {
+          "type": ["string", "null"]
+        }
+      },
+      "required": ["link", "description"]
+    },
+
+    "PackageInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "link": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string"
+        },
+        "license": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": ["name", "link", "version", "date"]
+    },
+
+    "Link4": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "link": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string"
+        }
+      },
+      "required": ["link", "date"]
+    }
+  }
+}

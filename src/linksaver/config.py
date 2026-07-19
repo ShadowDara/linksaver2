@@ -123,12 +123,12 @@ class AppConfig:
 # ---------- CONSTANTS ----------
 
 NOTE = (
-    "This file was generated with linksaver by Shadowdara for the samengine project. see https://shadowara.github.io/docs/#/linksaver or or https://github.com/shadowdara/l2 for more infos"
+    "This file was generated with linksaver by Shadowdara for the samengine project. see https://shadowara.github.io/docs#/linksaver or or https://github.com/shadowdara/l2 for more infos"
 )
 
 SCHEMA_URL = (
-    "https://raw.githubusercontent.com/ShadowDara/samengine/"
-    "refs/heads/master/.samengine/shema.linksaver.json"
+    "https://raw.githubusercontent.com/ShadowDara/l2/"
+    "refs/heads/master/shema.json"
 )
 
 # ---------- PATH ----------
