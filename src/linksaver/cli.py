@@ -705,6 +705,9 @@ def cloneGitSubmodules(config: AppConfig) -> None:
         
         subprocess.run("git submodule update --init --recursive", shell=True)
         
+        # Clone l2 depenencies
+        subprocess.run("l2 clonesubm", shell=True)
+        
         print(f"Cloned {e.clonedir} successfuly!")
 
     print("Finished cloning every submodule!")
