@@ -54,7 +54,12 @@ clonesubm, {ansicolors.PURPLE}c{ansicolors.END}    clone the git submodules (req
 gitsplit        Split files in repo which are to big for git
 gitrestore      restore the splitted files
 gitview         View the files which are to big for git
+gitrepo pack    Pack a nested .git folder into an (optionally encrypted) archive
+gitrepo restore Restore a .git folder from an archive created by "gitrepo pack"
 s               a little status info with gitview and git status
+
+Run `linksaver <command> -h` for details/options of an individual command
+(e.g. `linksaver gitrepo pack -h`).
 """)
 
 
@@ -93,6 +98,8 @@ def menu() -> str | None:
         ("Split to big files for git", "gitsplit"),
         ("Restore the files which are to big", "gitrestore"),
         ("View files which are to big", "gitview"),
+        ("Pack a nested .git folder (gitrepo pack)", "gitrepopack"),
+        ("Restore a nested .git folder (gitrepo restore)", "gitreporestore"),
         ("Exit", None),
     ]
 

@@ -16,32 +16,37 @@ Linksaver by Shadowdara
 
 This module is intentionally "thin": it only
 
-  1. loads the config file (config.load()),
-  2. figures out which command the user wants (a CLI argument, or the
-     interactive menu - see commands/ui.py),
+  1. builds an argparse parser describing every command (build_parser()),
+  2. loads the config file for commands that need it (config.load()),
   3. and dispatches to the matching function in the `commands` package.
 
 All the actual command logic lives in commands/*.py - see that package's
 __init__.py for an overview of which file does what.
+
+`gitrepo` (pack/restore nested .git folders, see gitreposaver.py) is a
+self-contained tool that does NOT need a linksaver.json project config -
+it works on any git repository - so it's handled a little differently
+from the other commands (see run_gitrepo() below).
 """
 
 from __future__ import annotations
 
+import argparse
 import sys
 import time
 
-from . import splitter
-from .config import AppConfig, load, newConfig
-from .commands import export_cmd, imports_cmd, init_cmd, links_cmd, submodules_cmd, ui
+from . import gitreposaver, splitter, version
+from .config import AppConfig, load
+from .commands import export_cmd, gitrepo_cmd, imports_cmd, init_cmd, links_cmd, submodules_cmd, ui
 
 
 # ---------------------------------------------------------------------------
 # Command dispatch table
 #
-# Maps the string a user types (e.g. "add", "view", "clonesubm") to the
-# function that implements it. Every function here takes a single
-# `AppConfig` argument. Commands that don't need the config (help/info/
-# init) are handled separately in execute(), before this table is used.
+# Maps a command name to the function that implements it. Every function
+# here takes a single `AppConfig` argument. Commands that don't need a
+# config (help/info/init/gitrepo) are handled separately in main(),
+# before this table is used.
 # ---------------------------------------------------------------------------
 
 COMMANDS = {
@@ -61,36 +66,147 @@ COMMANDS = {
     "gitview": splitter.index,
     "open": links_cmd.open_all,
     "s": lambda config: ui.status(),
+    # Menu-only convenience entries for the gitrepo feature (the real CLI
+    # entry point is the "gitrepo" subcommand handled by run_gitrepo()).
+    "gitrepopack": gitrepo_cmd.pack_interactive,
+    "gitreporestore": gitrepo_cmd.restore_interactive,
 }
 
-# Commands that are handled *before* a config is required/looked at.
-NO_CONFIG_COMMANDS = {"help", "-h", "--help", "h"}
 
+# ---------------------------------------------------------------------------
+# Argument parser
+# ---------------------------------------------------------------------------
 
-# ---------- EXECUTE ----------
-
-def execute(arg: str, config: AppConfig) -> None:
+def build_parser() -> argparse.ArgumentParser:
     """
-    Run a single command by name.
+    Build the top-level argparse parser with one subparser per command.
 
-    Args:
-        arg: The command name (e.g. "add", "view", "help", ...).
-        config: The already-loaded project config.
+    Using argparse (instead of manually reading sys.argv[1]) gives us for
+    free: `-h`/`--help` on every (sub-)command, argument validation,
+    `--version`, and a consistent way to add commands that need their own
+    flags/positional arguments (like `gitrepo pack`/`gitrepo restore`).
     """
 
-    if arg in NO_CONFIG_COMMANDS:
-        ui.help()
-        return
+    parser = argparse.ArgumentParser(
+        prog="linksaver",
+        description=(
+            "Linksaver by Shadowdara - save links, licenses and credits "
+            "for your project."
+        ),
+    )
 
-    if arg == "info":
-        ui.info()
-        return
+    parser.add_argument(
+        "-V", "--version",
+        action="version",
+        version=f"linksaver {version.___version___}",
+    )
 
-    if arg == "init":
-        init_cmd.init()
-        return
+    subparsers = parser.add_subparsers(dest="command")
 
-    handler = COMMANDS.get(arg)
+    # ----- simple commands: no extra arguments of their own -----
+
+    subparsers.add_parser("help", aliases=["h"], help="show this message")
+    subparsers.add_parser("info", help="get more infos about the programm")
+    subparsers.add_parser("init", help="create config")
+    subparsers.add_parser("add", help="add link")
+    subparsers.add_parser("add2", help="add entry (text only)")
+    subparsers.add_parser("add3", help="add license file")
+    subparsers.add_parser("view", help="formats links into Markdown")
+    subparsers.add_parser("viewx", help="formats links into TXT")
+    subparsers.add_parser("list", help="list links")
+    subparsers.add_parser("addpkg", help="add links from a package lock file")
+    subparsers.add_parser("addcargo", help="add links from a cargo lock file")
+    subparsers.add_parser("open", help="open all links")
+    subparsers.add_parser(
+        "addsubmodule",
+        help="add a git submodule to the data (more infos in the docs)",
+    )
+    subparsers.add_parser(
+        "clonesubm",
+        aliases=["c"],
+        help="clone the git submodules (requires git)",
+    )
+    subparsers.add_parser(
+        "gitsplit", help="split files in repo which are too big for git",
+    )
+    subparsers.add_parser("gitrestore", help="restore the splitted files")
+    subparsers.add_parser(
+        "gitview", help="view the files which are too big for git",
+    )
+    subparsers.add_parser(
+        "s", help="a little status info with gitview and git status",
+    )
+
+    # ----- gitrepo: pack/restore nested .git folders (ex-gitreposaver.py) -----
+
+    gitrepo_parser = subparsers.add_parser(
+        "gitrepo",
+        help="pack/restore nested .git folders of sub-repositories",
+        description=(
+            "Findet Git-Repositories, die innerhalb eines anderen "
+            "Git-Repositories verschachtelt sind, und kann deren .git-"
+            "Verzeichnis archivieren (pack) bzw. wiederherstellen "
+            "(restore). Diese Funktion benötigt KEINE linksaver.json."
+        ),
+    )
+
+    gitrepo_subparsers = gitrepo_parser.add_subparsers(
+        dest="gitrepo_command",
+        required=True,
+    )
+
+    pack_parser = gitrepo_subparsers.add_parser(
+        "pack",
+        help="verschachtelte .git-Verzeichnisse archivieren",
+    )
+    pack_parser.add_argument(
+        "root",
+        nargs="?",
+        default=".",
+        help="Main-Git-Repository (Default: aktuelles Verzeichnis).",
+    )
+    pack_parser.add_argument(
+        "-o", "--output",
+        default="./git-archives",
+        help="Ausgabe-Verzeichnis (Default: ./git-archives).",
+    )
+    pack_parser.add_argument(
+        "--encrypt",
+        action="store_true",
+        help="Archiv mit AES-256 verschlüsseln.",
+    )
+    pack_parser.add_argument(
+        "--base64",
+        action="store_true",
+        help="Archiv zusätzlich als Base64 speichern.",
+    )
+
+    restore_parser = gitrepo_subparsers.add_parser(
+        "restore",
+        help="ein .git-Archiv wiederherstellen",
+    )
+    restore_parser.add_argument("archive", help="ZIP/ENC/B64-Archiv.")
+    restore_parser.add_argument("destination", help="Ziel-Repository.")
+    restore_parser.add_argument(
+        "--decrypt",
+        action="store_true",
+        help="Archiv entschlüsseln.",
+    )
+
+    return parser
+
+
+# ---------------------------------------------------------------------------
+# Dispatch
+# ---------------------------------------------------------------------------
+
+def dispatch_simple(command: str, config: AppConfig) -> None:
+    """
+    Run one of the "simple" commands (the ones taking just an AppConfig)
+    by name. Used both for CLI args and for the interactive menu.
+    """
+
+    handler = COMMANDS.get(command)
 
     if handler is None:
         print("Linksaver: Argument not found!")
@@ -99,7 +215,33 @@ def execute(arg: str, config: AppConfig) -> None:
     handler(config)
 
 
-# ---------- MAIN ----------
+def run_gitrepo(args: argparse.Namespace) -> None:
+    """
+    Handle the `gitrepo pack`/`gitrepo restore` subcommands.
+
+    This mirrors gitreposaver.py's own error handling (it used to be a
+    fully separate script) so behaviour stays identical now that it's
+    reached through the main `linksaver` CLI instead.
+    """
+
+    try:
+        if args.gitrepo_command == "pack":
+            gitreposaver.pack(args)
+        elif args.gitrepo_command == "restore":
+            gitreposaver.restore(args)
+
+    except KeyboardInterrupt:
+        print("\nAbgebrochen.")
+        sys.exit(130)
+
+    except Exception as exc:
+        print(f"\nFEHLER: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
 def main() -> None:
     """
@@ -107,48 +249,63 @@ def main() -> None:
 
     Behaviour, in order:
 
-    1. Try to load `linksaver.json` from the current directory.
-    2. If it loads and `settings.selectmenu` is on, show the interactive
-       menu instead of reading `sys.argv`.
-    3. Otherwise, treat `sys.argv[1]` as the command to run.
-    4. If loading the config failed (e.g. it doesn't exist yet), still
-       allow running `init` or `help` without a config, and otherwise
-       print a friendly error explaining how to fix it.
+    1. Parse CLI arguments with argparse.
+    2. `help`/`info`/`init` never need a config - run them immediately.
+    3. `gitrepo` never needs a linksaver.json either (it works on any git
+       repo) - run it immediately too.
+    4. For everything else, try to load `linksaver.json`.
+       - If it loads and no command was given and
+         `settings.selectmenu` is on, show the interactive menu.
+       - If it loads and a command was given, run that command.
+       - If loading fails, print a friendly error explaining how to fix
+         it (run 'init' first).
     """
+
+    parser = build_parser()
+    args = parser.parse_args()
+
+    if args.command in ("help", "h"):
+        ui.help()
+        return
+
+    if args.command == "info":
+        ui.info()
+        return
+
+    if args.command == "init":
+        init_cmd.init()
+        return
+
+    if args.command == "gitrepo":
+        run_gitrepo(args)
+        return
 
     try:
         config: AppConfig = load()
 
-        if config.settings is not None and config.settings.selectmenu is True:
-            # Interactive mode: ask the user to pick a command by number.
-            arg = ui.menu()
-            execute(arg, config)
-            return
-
-        if len(sys.argv) > 1:
-            arg = sys.argv[1]
-            execute(arg, config)
-        else:
-            print("Linksaver: run with one argument of help!")
-
     except Exception as e:
-        # No valid config yet (or it's broken) - still allow `init` and
-        # `help` to work so the user isn't stuck.
-        if len(sys.argv) > 1:
-            if sys.argv[1] == "init":
-                execute("init", newConfig("temp"))
-                return
-
-            if sys.argv[1] in NO_CONFIG_COMMANDS:
-                ui.help()
-                return
-
         ui.banner()
         print("Linksaver: Config Error:", e)
         print("Run 'init' first or run with help!")
 
         time.sleep(2)
         sys.exit(1)
+        return
+
+    if args.command is None:
+        if config.settings is not None and config.settings.selectmenu is True:
+            # Interactive mode: ask the user to pick a command by number.
+            selected = ui.menu()
+
+            if selected:
+                dispatch_simple(selected, config)
+
+            return
+
+        print("Linksaver: run with one argument of help!")
+        return
+
+    dispatch_simple(args.command, config)
 
 
 # Main stuff where everything gets executed
