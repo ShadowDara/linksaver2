@@ -10,4 +10,4 @@ NOTE: the variable name uses the unusual triple-underscore spelling
 exact name, so it is kept unchanged here to avoid breaking anything.
 """
 
-___version___: str = "3.0.3"
+___version___: str = "3.0.4"
