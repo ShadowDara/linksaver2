@@ -1,162 +1,78 @@
-# Config Code
+"""
+Config file handling
+=====================
+
+Everything related to *reading* and *writing* a project's
+``linksaver.json`` file lives here. The actual data shapes (dataclasses)
+live in models.py - this module only knows how to turn them into JSON and
+back.
+
+Typical usage from a command::
+
+    from .config import load, save, newConfig
+
+    config = load()          # raises FileNotFoundError if no config yet
+    config.links.append(...)
+    save(config)
+"""
 
 from __future__ import annotations
-import time
+
 import json
-import os
-import platform
-import sys
-import re
-from dataclasses import dataclass, field, asdict
-from datetime import datetime
+from dataclasses import asdict
 from pathlib import Path
-from typing import Optional, List, Union
-import subprocess
-from . import splitter
 
-
-@dataclass
-class Submodules:
-    """
-    Dataclass for the Gitsubmodules clone data
-    """
-
-    desc: str
-    clonedir: str
-    dir: str
-    repolink: str
-    repocommit: str
-    branch: Optional[str] = None
-
-
-@dataclass
-class GitData:
-    """
-    Dataclass for data for options
-    """
-
-    submodules: List[Submodules] = field(default_factory=list)
-    splitter: splitter.gitsplitterdata = field(
-        default_factory=lambda: splitter.gitsplitterdata(
-            maxfilesize=99,
-            ignorepath=[]
-        )
-    )
-
-
-@dataclass
-class Settings:
-    """
-    Settings Class for the program
-    """
-
-    selectmenu: bool
-
-
-@dataclass
-class Link:
-    """
-    Link Class to save a standard Link
-    """
-
-    link: str
-    description: str
-    name: Optional[str] = None
-    license: Optional[str] = None
-    author: Optional[str] = None
-    licenselink: Optional[str] = None
-    showinlist: bool = True
-    changenotice: bool = False
-    date: Optional[str] = None
-
-
-@dataclass
-class PackageInfo:
-    """
-    Dataclass for NPM or cargo package
-    """
-
-    name: str
-    link: str
-    version: str
-    date: str
-    license: Optional[Union[str, List[str]]] = None
-
-
-@dataclass
-class Link4:
-    """
-    Dataclass for a Sketchfab Link
-    """
-
-    link: str
-    date: str
-
-
-@dataclass
-class AppConfig:
-    """
-    The AppConfig for the l2 program
-    """
-
-    projectname: str
-    pretty: bool = True
-
-    schema: Optional[str] = None
-
-    links: List[Link] = field(default_factory=list)
-    links2: List[str] = field(default_factory=list)
-    links3: List[str] = field(default_factory=list)
-    links4: List[Link4] = field(default_factory=list)
-    links5: List[Link4] = field(default_factory=list)
-
-    linkspkglock: List[PackageInfo] = field(default_factory=list)
-    linkscargolock: List[PackageInfo] = field(default_factory=list)
-
-    settings: Optional[Settings] = None
-
-    git: Optional[GitData] = None
-
-    note: Optional[str] = None
-
+from .models import AppConfig, GitData, GitSplitterData, Link, Link4, Settings, Submodules
 
 # ---------- CONSTANTS ----------
 
+# Text that gets written into every generated config file so people know
+# where it came from.
 NOTE = (
-    "This file was generated with linksaver by Shadowdara for the samengine project. see https://shadowara.github.io/docs#/linksaver or or https://github.com/shadowdara/l2 for more infos"
+    "This file was generated with linksaver by Shadowdara for the "
+    "samengine project. see https://shadowara.github.io/docs#/linksaver "
+    "or https://github.com/shadowdara/l2 for more infos"
 )
 
+# JSON schema used by editors (e.g. VS Code) for autocompletion/validation
+# of linksaver.json.
 SCHEMA_URL = (
     "https://raw.githubusercontent.com/ShadowDara/l2/"
     "refs/heads/master/shema.json"
 )
 
+
 # ---------- PATH ----------
 
 def configPath() -> Path:
     """
-    Function to get the path to the config file
+    Return the path to the config file for the *current* project.
+
+    Linksaver always looks for/writes ``linksaver.json`` in the current
+    working directory - i.e. wherever the command is run from.
     """
 
     return Path.cwd() / "linksaver.json"
     # return Path.cwd() / ".samengine" / "linksaver.json"
 
 
-def save(config: AppConfig):
+# ---------- SAVE ----------
+
+def save(config: AppConfig) -> None:
     """
-    Fcuntion to save the Appconfig
+    Write an AppConfig object to disk as ``linksaver.json``.
 
     Args:
-        config (AppConfig): all the config data of the Application
+        config: The full config object to persist.
     """
 
     file = configPath()
-
     file.parent.mkdir(parents=True, exist_ok=True)
 
     data = asdict(config)
 
-    # schema heißt im JSON $schema
+    # In Python we call the field "schema", but in the JSON file it must
+    # be called "$schema" so editors recognize it as a schema reference.
     data["$schema"] = data.pop("schema")
 
     if config.pretty:
@@ -167,15 +83,24 @@ def save(config: AppConfig):
     file.write_text(text, encoding="utf8")
 
 
-# ---------- CONFIG ----------
+# ---------- CREATE A FRESH CONFIG ----------
 
 def newSettings() -> Settings:
+    """Default settings used for brand-new projects."""
+
     return Settings(
         selectmenu=False,
     )
 
 
 def newConfig(name: str) -> AppConfig:
+    """
+    Build a brand-new, empty AppConfig for a project called `name`.
+
+    This does NOT write anything to disk - call save() afterwards if you
+    want to persist it (see commands/init_cmd.py).
+    """
+
     return AppConfig(
         projectname=name,
         schema=SCHEMA_URL,
@@ -185,16 +110,23 @@ def newConfig(name: str) -> AppConfig:
     )
 
 
+# ---------- LOAD ----------
+
 def load() -> AppConfig:
     """
-    function which loads the linksaver config
+    Load and parse ``linksaver.json`` from the current directory.
+
+    Missing optional sections (settings, git, links2, ...) are filled in
+    with sensible defaults so that older config files created by earlier
+    versions of Linksaver keep working without a manual migration step.
 
     Raises:
-        FileNotFoundError: Config file not found
-        Exception: _description_
+        FileNotFoundError: No linksaver.json exists in the current
+            directory.
+        Exception: The file exists but is missing a `projectname`.
 
     Returns:
-        AppConfig: The config data for the programm
+        AppConfig: The fully populated config for the current project.
     """
 
     file = configPath()
@@ -206,6 +138,8 @@ def load() -> AppConfig:
 
     if not data.get("projectname"):
         raise Exception("projectname must be set")
+
+    # ----- fill in defaults for anything missing (backwards compat) -----
 
     if "$schema" not in data:
         data["$schema"] = SCHEMA_URL
@@ -220,6 +154,8 @@ def load() -> AppConfig:
     data.setdefault("links5", [])
     data.setdefault("linkspkglock", [])
     data.setdefault("linkscargolock", [])
+
+    # ----- build the top-level AppConfig -----
 
     config = AppConfig(
         projectname=data["projectname"],
@@ -237,12 +173,9 @@ def load() -> AppConfig:
     config.linkscargolock = data["linkscargolock"]
     config.settings = Settings(**data["settings"])
 
-    # <-- HIER einfügen
-    if data.get("git") is None:
-        data["git"] = {}
+    # ----- build the "git" section (submodules + splitter settings) -----
 
-    git = data["git"]
-
+    git = data.get("git") or {}
     git_splitter = git.get("splitter", {})
 
     config.git = GitData(
@@ -250,10 +183,10 @@ def load() -> AppConfig:
             Submodules(**x)
             for x in git.get("submodules", [])
         ],
-        splitter=splitter.gitsplitterdata(
+        splitter=GitSplitterData(
             maxfilesize=git_splitter.get("maxfilesize", 99),
-            ignorepath=git_splitter.get("ignorepath", [])
-        )
+            ignorepath=git_splitter.get("ignorepath", []),
+        ),
     )
 
     return config

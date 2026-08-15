@@ -5,931 +5,145 @@
 # Read the Docs for more Infos
 # https://shadowdara.github.io/docs/#/linksaver
 
-# licensed under Appache license 2.0 by Shadowdara 2026
+# licensed under Apache license 2.0 by Shadowdara 2026
 # DO NOT REMOVE THIS NOTICE !!!
 
 # pylint: disable=invalid-name
 
 """
 Linksaver by Shadowdara
+========================
+
+This module is intentionally "thin": it only
+
+  1. loads the config file (config.load()),
+  2. figures out which command the user wants (a CLI argument, or the
+     interactive menu - see commands/ui.py),
+  3. and dispatches to the matching function in the `commands` package.
+
+All the actual command logic lives in commands/*.py - see that package's
+__init__.py for an overview of which file does what.
 """
 
 from __future__ import annotations
-import time
-import json
-import os
-import platform
+
 import sys
-import re
-from dataclasses import dataclass, field, asdict
-from datetime import datetime
-from pathlib import Path
-from typing import Optional, List, Union
-import subprocess
+import time
 
 from . import splitter
-from .config import AppConfig, Settings, Submodules, GitData, Link, Link4, PackageInfo, save, load, configPath, newConfig
-from . import ansicolors
-from . import version
-
-
-# ---------- PROMPT ----------
-
-def prompt(message: str) -> str:
-    """
-    Wrapper function for an Input Prompt
-
-    Args:
-        message (str): String which gets printed to the command line
-
-    Returns:
-        str: input which the user types in
-    """
-
-    return input(message).strip()
-
-
-# ---------- INIT ----------
-
-def init():
-    print("Init Linksaver")
-
-    directory = Path.cwd() / ".samengine"
-    directory.mkdir(parents=True, exist_ok=True)
-
-    file = configPath()
-
-    if file.exists():
-        print(f"Config already exists: {file}")
-        return
-
-    (directory / "links.info.md").write_text("", encoding="utf8")
-    (directory / "links.info.txt").write_text("", encoding="utf8")
-
-    name = prompt("Projectname: ")
-
-    config = newConfig(name)
-    save(config)
-
-    print(f"Created config at {file}")
-
-
-# ---------- ADD ----------
-
-def add(config: AppConfig):
-    nameInput = prompt("Name (optional): ")
-    authorInput = prompt("Author (optional): ")
-    licenseInput = prompt("License (optional): ")
-    licenseLinkInput = prompt("License Link (optional): ")
-
-    link = Link(
-        name=nameInput if nameInput else None,
-        link=prompt("New Link: "),
-        description=prompt("New Description: "),
-        author=authorInput if authorInput else None,
-        license=licenseInput if licenseInput else None,
-        licenselink=licenseLinkInput if licenseLinkInput else None,
-        showinlist=prompt("Show in list? (y/n, default y): ") != "n",
-        changenotice=prompt("Mark as changed? (y/n, default n): ") == "y",
-        date=datetime.now().isoformat(),
-    )
-
-    config.links.append(link)
-    save(config)
-
-    print("Added new link!")
-    
-
-# add4
-# ersetzt Rust add2
-
-def add4(config: AppConfig):
-    entry = prompt("Entry text: ")
-
-    link = Link4(
-        link=entry,
-        date=datetime.now().isoformat(),
-    )
-
-    if config.links4 is None:
-        config.links4 = []
-
-    config.links4.append(link)
-
-    save(config)
-
-    print("Added new entry!")
-
-
-# add5
-# ersetzt Rust add3
-
-def add5(config: AppConfig):
-    filePath = prompt("License file: ")
-
-    if not Path(filePath).resolve().exists():
-        print(f"Warning: '{filePath}' does not exist.")
-
-    link = Link4(
-        link=filePath,
-        date=datetime.now().isoformat(),
-    )
-
-    if config.links5 is None:
-        config.links5 = []
-
-    config.links5.append(link)
-
-    save(config)
-
-    print("Added license file!")
-
-
-# ---------- OPEN LINKS ----------
-
-def openLink(url: str):
-    try:
-        if platform.system() == "Windows":
-            os.startfile(url)
-        elif platform.system() == "Darwin":
-            subprocess.run(["open", url], check=False)
-        else:
-            subprocess.run(["xdg-open", url], check=False)
-    except Exception as e:
-        print("Error opening link:", e)
-
-
-def openAll(config: AppConfig):
-    print("Opening links...")
-    for link in config.links:
-        openLink(link.link)
-
-
-
-# ---------- MARKDOWN FORMAT ----------
-
-def view(config: AppConfig):
-    file = Path(".samengine/links.md")
-
-    output = ""
-
-    output += f"# Links for {config.projectname}\n\n"
-
-    infoFile = Path(".samengine/links.info.md")
-
-    if infoFile.exists():
-        output += infoFile.read_text(encoding="utf8") + "\n\n"
-    else:
-        print("Info file doesnt exist!")
-
-    output += f"Used for {config.projectname}:\n\n"
-
-    # links
-    for l in config.links:
-        output += "- "
-
-        if l.name:
-            output += f"**{l.name}** "
-
-        output += f"([{l.link}]({l.link})) "
-
-        output += f"- {l.description} - "
-
-        if l.author:
-            output += f"by **{l.author}** "
-
-        if l.license:
-            output += f"licensed unter *{l.license}* "
-
-        if l.licenselink:
-            output += f"([{l.licenselink}]({l.licenselink})) "
-
-        if l.changenotice:
-            output += "- *(changes were made)*"
-
-        if l.date:
-            output += f" - *(saved at date: {l.date})*"
-
-        output += "\n"
-
-    # links2
-    for l in config.links2:
-        output += f"- {l}\n"
-
-    # links4
-    if config.links4 is not None:
-        for l in config.links4:
-            output += f"- {l.link} saved at date: **{l.date}**\n"
-
-    # package lock
-    if config.linkspkglock is not None:
-        for item in config.linkspkglock:
-            output += (
-                f"- used **{item.name}** version {item.version} "
-                f"licensed under **{item.license}** "
-                f"- *[Link]({item.link})*\n"
-            )
-
-    # cargo lock
-    if config.linkscargolock is not None:
-        for item in config.linkscargolock:
-            output += (
-                f"- used **{item.name}** version {item.version} "
-                f"licensed under **{item.license}** "
-                f"- *[Link]({item.link})*\n"
-            )
-
-    # links3
-    for licenseFile in config.links3:
-        path = Path(licenseFile)
-
-        if path.exists():
-            content = path.read_text(encoding="utf8")
-
-            output += f"""
----
-
-**license content from file: {licenseFile}**
-
-```
-{content}
-```
-
-"""
-        else:
-            print(f"Warning: License file '{licenseFile}' does not exist.")
-
-    # links5
-    if config.links5 is not None:
-        for item in config.links5:
-            path = Path(item.link)
-
-            if path.exists():
-                content = path.read_text(encoding="utf8")
-
-                output += f"""
----
-
-**license content from file: {item.link}** at date: *{item.date}*
-
-```
-{content}
-```
-
-"""
-            else:
-                print(f"Warning: License file '{item.link}' does not exist.")
-
-    output += """
----
-
-*File generated by linksaver from s2* - [More Infos](https://shadowdara.wordpress.com/2026/06/30/minisite-a-site-in-only-one-html-file/)
-"""
-
-    file.write_text(output, encoding="utf8")
-
-    print(
-        """
-Created File - Use parseMarkdown from samengine to make it into a nice html file.
-
-npm i samengine
-npx samengine markdown .samengine/links.md
-"""
-    )
-
-
-# ---------- TXT FORMAT ----------
-
-def viewx(config: AppConfig) -> None:
-    """
-    Function to convert the licenses in the JSON file into a TXT File
-    """
-
-    file = Path(".samengine/links.txt")
-
-    output = ""
-
-    output += f"Links for {config.projectname}\n\n"
-
-    infoFile = Path(".samengine/links.info.txt")
-
-    if infoFile.exists():
-        output += infoFile.read_text(encoding="utf8") + "\n\n"
-    else:
-        print("Info file doesnt exist!")
-
-    output += f"Used for {config.projectname}:\n\n"
-
-    # links
-    for l in config.links:
-        output += "- "
-
-        if l.name:
-            output += l.name
-
-        output += f" ({l.link}) "
-
-        output += f"- {l.description} - "
-
-        if l.author:
-            output += f"by {l.author} "
-
-        if l.license:
-            output += f"licensed unter {l.license} "
-
-        if l.licenselink:
-            output += f"({l.licenselink}) "
-
-        if l.changenotice:
-            output += "- (changes were made)"
-
-        if l.date:
-            output += f" - (saved at date: {l.date})"
-
-        output += "\n"
-
-    # links2
-    for l in config.links2:
-        output += f"- {l}\n"
-
-    # links4
-    if config.links4 is not None:
-        for l in config.links4:
-            output += f"- {l.link} saved at date: {l.date}\n"
-
-    # links3
-    for licenseFile in config.links3:
-        path = Path(licenseFile)
-
-        if path.exists():
-            content = path.read_text(encoding="utf8")
-
-            output += f"""
-license content from file: {licenseFile}
-
-{content}
-
-"""
-        else:
-            print(f"Warning: License file '{licenseFile}' does not exist.")
-
-    # links5
-    if config.links5 is not None:
-        for item in config.links5:
-            path = Path(item.link)
-
-            if path.exists():
-                content = path.read_text(encoding="utf8")
-
-                output += f"""
-license content from file: {item.link} at date: {item.date}
-
-{content}
-
-"""
-            else:
-                print(f"Warning: License file '{item.link}' does not exist.")
-
-    output += """
----
-
-File generated by linksaver from s2 - https://shadowdara.wordpress.com/2026/06/30/minisite-a-site-in-only-one-html-file/
-"""
-
-    file.write_text(output, encoding="utf8")
-
-
-# ---------- LIST ----------
-
-def list_links(config: AppConfig):
-    print("\nCredits:\n")
-
-    for l in config.links:
-        if not l.showinlist:
-            continue
-
-        print(
-            f'"{l.name or ""}" ({l.link}) '
-            f'by {l.author or ""} '
-            f'is licensed under {l.license or ""} '
-            f'({l.licenselink or ""})'
-            f'{" (changes were made)" if l.changenotice else ""}'
-        )
-
-    for entry in config.links2:
-        print(entry)
-
-# ---------- ADD PACKAGE LOCK LICENSES ----------
-
-def addPkgLock(config: AppConfig):
-    lockFile = Path.cwd() / "package-lock.json"
-
-    if not lockFile.exists():
-        print("package-lock.json not found")
-        return
-
-    nodeModules = Path.cwd() / "node_modules"
-
-    if not nodeModules.exists():
-        print("node_modules not found. Run npm install first.")
-        return
-
-    with open(lockFile, "r", encoding="utf8") as f:
-        lock = json.load(f)
-
-    packages: list[PackageInfo] = []
-
-    def readLicense(pkgPath: Path) -> str:
-        try:
-            with open(pkgPath / "package.json", "r", encoding="utf8") as f:
-                pkgJson = json.load(f)
-
-            if isinstance(pkgJson.get("license"), str):
-                return pkgJson["license"]
-
-            if isinstance(pkgJson.get("license"), dict):
-                if isinstance(pkgJson["license"].get("type"), str):
-                    return pkgJson["license"]["type"]
-
-            if isinstance(pkgJson.get("licenses"), list):
-                return ", ".join(
-                    x if isinstance(x, str) else x.get("type", "")
-                    for x in pkgJson["licenses"]
-                )
-
-            return "UNKNOWN"
-
-        except Exception:
-            return "UNKNOWN"
-
-    # package-lock v2 / v3
-    if "packages" in lock:
-        for key, value in lock["packages"].items():
-
-            if key == "":
-                continue
-
-            packagePath = Path.cwd() / key
-
-            name = value.get("name") or re.sub(r"^node_modules/", "", key)
-
-            packages.append(
-                PackageInfo(
-                    name=name,
-                    version=value.get("version", ""),
-                    license=readLicense(packagePath),
-                    link=f"https://www.npmjs.com/package/{name}",
-                    date=datetime.now().isoformat(),
-                )
-            )
-
-    config.linkspkglock = packages
-
-    save(config)
-
-    print(f"Added {len(packages)} packages from package-lock.json")
-
-
-# ---------- ADD CARGO LOCK LICENSES ----------
-
-def addCargoLock(config: AppConfig):
-    """
-    Function to add all the licenses from Cargo packages
-
-    Args:
-        config (AppConfig): _description_
-
-    Returns:
-        _type_: _description_
-    """
-    
-    lockFile = Path.cwd() / "Cargo.lock"
-
-    if not lockFile.exists():
-        print("Cargo.lock not found")
-        return
-
-    home = os.environ.get("HOME") or os.environ.get("USERPROFILE")
-
-    if not home:
-        print("Home directory not found")
-        return
-
-    cargoHome = Path(home) / ".cargo" / "registry" / "src"
-
-    if not cargoHome.exists():
-        print("Cargo registry not found.")
-        print("Run: cargo fetch")
-        return
-
-    lock = lockFile.read_text(encoding="utf8")
-
-    packages: list[PackageInfo] = []
-
-    def findCargoToml(name: str, version: str) -> Path | None:
-        """
-        Function which searches for the cargo toml of a crate
-
-        Args:
-            name (str): Name of the crate
-            version (str): Version of the crate
-
-        Returns:
-            Path | None: the path to the crate
-        """
-        for registry in cargoHome.iterdir():
-            cargoToml = registry / f"{name}-{version}" / "Cargo.toml"
-
-            if cargoToml.exists():
-                return cargoToml
-
-        return None
-
-    def readLicense(cargoToml: Path) -> str:
-        content = cargoToml.read_text(encoding="utf8")
-
-        licenseMatch = re.search(
-            r'^\s*license\s*=\s*"([^"]+)"',
-            content,
-            re.MULTILINE,
-        )
-
-        if licenseMatch:
-            return licenseMatch.group(1)
-
-        licenseFile = re.search(
-            r'^\s*license-file\s*=\s*"([^"]+)"',
-            content,
-            re.MULTILINE,
-        )
-
-        if licenseFile:
-            return "SEE LICENSE FILE"
-
-        return "UNKNOWN"
-
-    blocks = re.split(r"\[\[package\]\]", lock)
-
-    seen: set[str] = set()
-
-    for block in blocks:
-
-        nameMatch = re.search(
-            r'^\s*name\s*=\s*"([^"]+)"',
-            block,
-            re.MULTILINE,
-        )
-
-        versionMatch = re.search(
-            r'^\s*version\s*=\s*"([^"]+)"',
-            block,
-            re.MULTILINE,
-        )
-
-        if not nameMatch or not versionMatch:
-            continue
-
-        name = nameMatch.group(1)
-        version = versionMatch.group(1)
-
-        identifier = f"{name}@{version}"
-
-        if identifier in seen:
-            continue
-
-        seen.add(identifier)
-
-        cargoToml = findCargoToml(name, version)
-
-        packages.append(
-            PackageInfo(
-                name=name,
-                version=version,
-                license=readLicense(cargoToml) if cargoToml else "UNKNOWN",
-                link=f"https://crates.io/crates/{name}",
-                date=datetime.now().isoformat(),
-            )
-        )
-
-    config.linkscargolock = packages
-
-    save(config)
-
-    print(f"Added {len(packages)} crates from Cargo.lock")
-
-
-def addGitSubmodule(config: AppConfig) -> None:
-    """
-    function to add a gitsubmodule to the datafile
-
-    Args:
-        config (AppConfig): the config of the program
-
-    Returns:
-        _type_: None
-    """
-    
-    desc = prompt("Description: ")
-    dirrr = prompt("Dir (where git clone is executed): ")
-    clonedir = prompt("The name for the repo dir: ")
-    repolink = prompt("repo link: ")
-    repocommit = prompt("repo commit: ")
-    branch = prompt("Repo Branch (empty for the main branch): ")
-    
-    if branch == "":
-        branch = None
-    
-    module = Submodules(
-        dir=dirrr,
-        repolink=repolink,
-        repocommit=repocommit,
-        clonedir=clonedir,
-        desc=desc,
-        branch=branch
-    )
-    
-    if config.git is None:
-        config.git = GitData()
-    
-    # add to the config
-    config.git.submodules.append(module)
-    
-    # DONT FORGET SAVING!
-    save(config)
-    
-    print("Added new submodule")
-    
-
-# Clone the gitsubmoules
-def cloneGitSubmodules(config: AppConfig) -> None:
-    print("Cloning depencies")
-    
-    old_path = os.getcwd()
-    
-    if config.git is None:
-        print("git option is None!")
-        return
-    
-    for e in config.git.submodules:        
-        # Reset the path
-        os.chdir(old_path)
-        
-        # Print Infos
-        print(e.desc)
-           
-        # Create dir
-        os.makedirs(os.getcwd() + "/" + e.dir, exist_ok=True)
-        
-        # Change the execution directory
-        os.chdir(os.getcwd() + "/" + e.dir)
-        
-        # Clone
-        
-        # With a different branch here
-        if e.branch:
-            clone_command = (
-                f'git clone --recursive --branch "{e.branch}" '
-                f'"{e.repolink}" "{e.clonedir}"'
-            )
-        else:
-            clone_command = (
-                f'git clone --recursive '
-                f'"{e.repolink}" "{e.clonedir}"'
-            )
-    
-        subprocess.run(clone_command, shell=True)
-        
-        # Change dir to the clone dir
-        os.chdir(os.getcwd() + "/" + e.clonedir)
-        
-        # Run git checkout for that commit
-        checkout_command = "git checkout " + e.repocommit
-        
-        subprocess.run(checkout_command, shell=True)
-        
-        subprocess.run("git submodule update --init --recursive", shell=True)
-        
-        # Clone l2 depenencies
-        subprocess.run("l2 clonesubm", shell=True)
-        
-        print(f"Cloned {e.clonedir} successfuly!")
-
-    print("Finished cloning every submodule!")
-
-
-# ---------- HELP ----------
-
-def banner() -> None:
-    print("""
-██╗     ██╗███╗   ██╗██╗  ██╗███████╗ █████╗ ██╗   ██╗███████╗██████╗
-██║     ██║████╗  ██║██║ ██╔╝██╔════╝██╔══██╗██║   ██║██╔════╝██╔══██╗
-██║     ██║██╔██╗ ██║█████╔╝ ███████╗███████║██║   ██║█████╗  ██████╔╝
-██║     ██║██║╚██╗██║██╔═██╗ ╚════██║██╔══██║╚██╗ ██╔╝██╔══╝  ██╔══██╗
-███████╗██║██║ ╚████║██║  ██╗███████║██║  ██║ ╚████╔╝ ███████╗██║  ██║
-╚══════╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝  ╚═══╝  ╚══════╝╚═╝  ╚═╝
-"""
-)
-
-
-def help():
-    banner()
-    print(f"""by {ansicolors.YELLOW}shadowdara{ansicolors.END} Version {ansicolors.GREEN}{version.___version___}{ansicolors.END}
-
-=== Commands ===
-
-help            show this message
-init            create config
-add             add link
-add2            add entry (text only)
-add3            add license file
-view            formats links into Markdown
-viewx           formats links into TXT
-list            list links
-addpkg          add links from a package lock file
-addcargo        add links from a cargo lock file
-open            open all links
-info            get more infos about the programm
-addsubmodule    add a git submodule to the data (more infos in the docs)
-clonesubm, {ansicolors.PURPLE}c{ansicolors.END}    clone the git submodules (requires git)
-gitsplit        Split files in repo which are to big for git
-gitrestore      restore the splitted files
-gitview         View the files which are to big for git
-s               a little status info with gitview and git status
-""")
-
-
-def info() -> None:
-    """
-    Function which generated an Info on how to use the Programm (TODO)
-    """
-
-
-# Menu
-def menu() -> str:
-    """
-    Selection Menu in Command line so User down have to select the options
-    via CLI Args
-    """
-    
-    commands = [
-        ("Open all links", ""),
-        ("Init", "init"),
-        ("Add link", "add"),
-        ("Add text entry", "add2"),
-        ("Add license file", "add3"),
-        ("Generate Markdown", "view"),
-        ("Generate TXT", "viewx"),
-        ("List credits", "list"),
-        ("Import package-lock.json", "addpkg"),
-        ("Import Cargo.lock", "addcargo"),
-        ("Help", "help"),
-        ("add Git Submodule", "addsubmodule"),
-        ("Clone git submodules", "clonesubm"),
-        ("Split to big files for git", "gitsplit"),
-        ("Restore the files which are to big", "gitrestore"),
-        ("View files which are to big", "gitview"),
-        ("Exit", None),
-    ]
-
-    print("\n=== Linksaver ===\n")
-
-    for i, (name, _) in enumerate(commands, start=1):
-        print(f"{i}. {name}")
-
-    while True:
-        try:
-            choice = int(input("\nSelect: "))
-
-            if 1 <= choice <= len(commands):
-                return commands[choice - 1][1]
-
-        except ValueError:
-            pass
-
-        print("Invalid selection.")
-
-
-# Status function
-def status() -> None:
-    """
-    Function to display an easy stats menu instead of git status
-    """
-
-    subprocess.run("git status", shell=True)
-    subprocess.run("l2 gitview", shell=True)
+from .config import AppConfig, load, newConfig
+from .commands import export_cmd, imports_cmd, init_cmd, links_cmd, submodules_cmd, ui
+
+
+# ---------------------------------------------------------------------------
+# Command dispatch table
+#
+# Maps the string a user types (e.g. "add", "view", "clonesubm") to the
+# function that implements it. Every function here takes a single
+# `AppConfig` argument. Commands that don't need the config (help/info/
+# init) are handled separately in execute(), before this table is used.
+# ---------------------------------------------------------------------------
+
+COMMANDS = {
+    "add": links_cmd.add,
+    "add2": links_cmd.add_text,
+    "add3": links_cmd.add_file,
+    "view": export_cmd.view,
+    "viewx": export_cmd.viewx,
+    "list": links_cmd.list_links,
+    "addpkg": imports_cmd.add_package_lock,
+    "addcargo": imports_cmd.add_cargo_lock,
+    "addsubmodule": submodules_cmd.add_git_submodule,
+    "clonesubm": submodules_cmd.clone_git_submodules,
+    "c": submodules_cmd.clone_git_submodules,
+    "gitsplit": splitter.splitter,
+    "gitrestore": splitter.restore_splitter,
+    "gitview": splitter.index,
+    "open": links_cmd.open_all,
+    "s": lambda config: ui.status(),
+}
+
+# Commands that are handled *before* a config is required/looked at.
+NO_CONFIG_COMMANDS = {"help", "-h", "--help", "h"}
 
 
 # ---------- EXECUTE ----------
 
 def execute(arg: str, config: AppConfig) -> None:
-    if arg in ("help", "-h", "--help", "h"):
-        help()
+    """
+    Run a single command by name.
+
+    Args:
+        arg: The command name (e.g. "add", "view", "help", ...).
+        config: The already-loaded project config.
+    """
+
+    if arg in NO_CONFIG_COMMANDS:
+        ui.help()
         return
 
     if arg == "info":
-        info()
+        ui.info()
         return
 
     if arg == "init":
-        init()
+        init_cmd.init()
         return
 
-    if arg == "add":
-        add(config)
+    handler = COMMANDS.get(arg)
 
-    elif arg == "add2":
-        add4(config)
-
-    elif arg == "add3":
-        add5(config)
-
-    elif arg == "view":
-        view(config)
-
-    elif arg == "viewx":
-        viewx(config)
-
-    elif arg == "list":
-        list_links(config)
-
-    elif arg == "addpkg":
-        addPkgLock(config)
-
-    elif arg == "addcargo":
-        addCargoLock(config)
-    
-    elif arg == "addsubmodule":
-        addGitSubmodule(config)
-    
-    elif arg == "clonesubm" or arg == "c":
-        cloneGitSubmodules(config)
-
-    elif arg == "gitsplit":
-        splitter.splitter(config)
-
-    elif arg == "gitrestore":
-        splitter.restore_splitter(config)
-
-    elif arg == "gitview":
-        splitter.index(config)
-
-    elif arg == "open":
-        openAll(config)
-
-    elif arg == "s":
-        status()
-
-    else:
+    if handler is None:
         print("Linksaver: Argument not found!")
+        return
+
+    handler(config)
 
 
-# Main
+# ---------- MAIN ----------
+
 def main() -> None:
     """
-    Main function which executes the programm
+    Main entry point of the program.
+
+    Behaviour, in order:
+
+    1. Try to load `linksaver.json` from the current directory.
+    2. If it loads and `settings.selectmenu` is on, show the interactive
+       menu instead of reading `sys.argv`.
+    3. Otherwise, treat `sys.argv[1]` as the command to run.
+    4. If loading the config failed (e.g. it doesn't exist yet), still
+       allow running `init` or `help` without a config, and otherwise
+       print a friendly error explaining how to fix it.
     """
 
-    # Try loading the Config
     try:
-        # Load the Config
         config: AppConfig = load()
 
-        if config.settings is not None:
-            if config.settings.selectmenu is True:
-                # Select via a cli selector
-                arg = menu()
+        if config.settings is not None and config.settings.selectmenu is True:
+            # Interactive mode: ask the user to pick a command by number.
+            arg = ui.menu()
+            execute(arg, config)
+            return
 
-                # Execute the selection
-                execute(arg, config)
-
-                # finish
-                return
-
-
-        # More than one argument
-        # then run linksaver in cli mode
         if len(sys.argv) > 1:
-            # get first arg after the filename
             arg = sys.argv[1]
-
             execute(arg, config)
         else:
             print("Linksaver: run with one argument of help!")
 
     except Exception as e:
-        
-        # Option to create a new config when no one exists
+        # No valid config yet (or it's broken) - still allow `init` and
+        # `help` to work so the user isn't stuck.
         if len(sys.argv) > 1:
             if sys.argv[1] == "init":
                 execute("init", newConfig("temp"))
                 return
-            
-            if sys.argv[1] in ("help", "-h", "--help", "h"):
-                help()
+
+            if sys.argv[1] in NO_CONFIG_COMMANDS:
+                ui.help()
                 return
 
-        # When a Config Error Appears
-        banner()
+        ui.banner()
         print("Linksaver: Config Error:", e)
         print("Run 'init' first or run with help!")
 
@@ -937,7 +151,7 @@ def main() -> None:
         sys.exit(1)
 
 
-# Main stuff where everthing gets executed
+# Main stuff where everything gets executed
 if __name__ == "__main__":
     main()
     sys.exit(0)
