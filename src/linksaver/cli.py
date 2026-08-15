@@ -251,7 +251,9 @@ def view(config: AppConfig):
 
 **license content from file: {licenseFile}**
 
+```
 {content}
+```
 
 """
         else:
@@ -270,7 +272,9 @@ def view(config: AppConfig):
 
 **license content from file: {item.link}** at date: *{item.date}*
 
+```
 {content}
+```
 
 """
             else:
