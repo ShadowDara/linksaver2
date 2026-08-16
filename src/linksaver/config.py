@@ -22,7 +22,7 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from .models import AppConfig, GitData, GitSplitterData, Link, Link4, Settings, Submodules
+from .models import AppConfig, GitData, GitSplitterData, Link, Link4, PackageInfo, Settings, Submodules
 
 # ---------- CONSTANTS ----------
 
