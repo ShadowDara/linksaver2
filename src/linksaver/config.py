@@ -169,8 +169,8 @@ def load() -> AppConfig:
     config.links3 = data["links3"]
     config.links4 = [Link4(**x) for x in data["links4"]]
     config.links5 = [Link4(**x) for x in data["links5"]]
-    config.linkspkglock = data["linkspkglock"]
-    config.linkscargolock = data["linkscargolock"]
+    config.linkspkglock = [PackageInfo(**x) for x in data["linkspkglock"]]
+    config.linkscargolock = [PackageInfo(**x) for x in data["linkscargolock"]]
     config.settings = Settings(**data["settings"])
 
     # ----- build the "git" section (submodules + splitter settings) -----
